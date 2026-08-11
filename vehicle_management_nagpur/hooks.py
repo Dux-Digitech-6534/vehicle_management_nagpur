@@ -5,6 +5,51 @@ app_description = "Vehicle Maintenance"
 app_email = "ritesh.sharma@duxdigitech.com"
 app_license = "mit"
 
+fixtures = [
+	{
+		"dt": "Workflow State",
+		"filters": [["name", "in", ["Draft", "Pending", "Approved", "Rejected", "Cancelled"]]],
+	},
+	{
+		"dt": "Workflow Action Master",
+		"filters": [["name", "in", ["Send for Approval", "Approve", "Reject", "Resubmit", "Cancel"]]],
+	},
+	{
+		"dt": "Workflow",
+		"filters": [
+			[
+				"name",
+				"in",
+				[
+					"VMN Log Details Approval",
+					"VMN Diesel Details Approval",
+					"VMN Maintenance Details Approval",
+					"VMN RTO Details Approval",
+					"VMN DG Details Approval",
+				],
+			]
+		],
+	},
+]
+
+doc_events = {
+	"User Details VMN": {
+		"after_insert": "vehicle_management_nagpur.workflow_setup.sync_user_detail_role",
+		"on_update": "vehicle_management_nagpur.workflow_setup.sync_user_detail_role",
+	}
+}
+
+after_migrate = "vehicle_management_nagpur.workflow_setup.sync_all_user_detail_roles"
+
+# By Ritesh
+# scheduler_events = {
+#     "daily": [
+#         "vehicle_management_nagpur.rto_utils.send_expiry_alerts"
+#     ]
+# }
+
+
+
 # Apps
 # ------------------
 
@@ -236,4 +281,5 @@ app_license = "mit"
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
+
 

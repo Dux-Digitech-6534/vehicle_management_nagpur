@@ -1,0 +1,267 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:LD - {##}",
+ "creation": "2025-11-05 16:44:11.548482",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "small_text_ixmy",
+  "section_break_lwnn",
+  "date",
+  "ld_vehicle_name",
+  "column_break_pzez",
+  "ld_type_of_vehicle",
+  "ld_vehicle_location",
+  "column_break_gtxs",
+  "vehicle_number",
+  "ld_select_campus",
+  "section_break_zzfp",
+  "start_reading",
+  "from_location",
+  "end_time",
+  "column_break_tuxg",
+  "end_reading",
+  "to_location",
+  "column_break_nfwg",
+  "ld_distance",
+  "start_time",
+  "ld_total_hours",
+  "section_break_zwrr",
+  "ld_start_reading",
+  "column_break_xfmi",
+  "ld_end_reading",
+  "column_break_clwj",
+  "ld_log_book",
+  "amended_from",
+  "workflow_state",
+  "section_break_pqeo",
+  "remark"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_lwnn",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Details"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Log Details VMN",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Approval Status",
+   "options": "Draft\nPending\nApproved\nRejected\nCancelled",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date"
+  },
+  {
+   "fieldname": "vehicle_number",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vehicle Number",
+   "options": "Vehicle Details VMN"
+  },
+  {
+   "fetch_from": "vehicle_number.vd_vehicle_name",
+   "fieldname": "ld_vehicle_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Vehicle Name"
+  },
+  {
+   "fetch_from": "vehicle_number.vd_location",
+   "fieldname": "ld_vehicle_location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vehicle Location"
+  },
+  {
+   "fieldname": "column_break_pzez",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_zzfp",
+   "fieldtype": "Section Break",
+   "label": "Trip Information"
+  },
+  {
+   "fieldname": "start_reading",
+   "fieldtype": "Float",
+   "label": "Start Reading"
+  },
+  {
+   "fieldname": "end_reading",
+   "fieldtype": "Float",
+   "label": "End Reading"
+  },
+  {
+   "fieldname": "from_location",
+   "fieldtype": "Data",
+   "label": "From Location"
+  },
+  {
+   "fieldname": "to_location",
+   "fieldtype": "Data",
+   "label": "To Location"
+  },
+  {
+   "fieldname": "column_break_tuxg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Time",
+   "label": "Start Time"
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Time",
+   "label": "End Time"
+  },
+  {
+   "fieldname": "remark",
+   "fieldtype": "Small Text",
+   "label": "Remark"
+  },
+  {
+   "fieldname": "section_break_zwrr",
+   "fieldtype": "Section Break",
+   "label": "Attachments"
+  },
+  {
+   "fieldname": "section_break_pqeo",
+   "fieldtype": "Section Break",
+   "label": "Remark"
+  },
+  {
+   "fieldname": "ld_start_reading",
+   "fieldtype": "Attach Image",
+   "label": "Start Reading Attachment"
+  },
+  {
+   "fieldname": "ld_end_reading",
+   "fieldtype": "Attach Image",
+   "label": "End Reading Attachment"
+  },
+  {
+   "fieldname": "ld_log_book",
+   "fieldtype": "Attach Image",
+   "label": "Log Book Attachment"
+  },
+  {
+   "fieldname": "column_break_xfmi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_gtxs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_nfwg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_clwj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ld_select_campus",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Select Campus",
+   "options": "Campus Details VMN"
+  },
+  {
+   "fieldname": "ld_distance",
+   "fieldtype": "Float",
+   "label": "Distance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ld_total_hours",
+   "fieldtype": "Float",
+   "label": "Total Hours",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ld_type_of_vehicle",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type of Vehicle",
+   "options": "BUS"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state == 'Rejected'",
+   "fieldname": "small_text_ixmy",
+   "fieldtype": "Small Text",
+   "label": "Reject Remark"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-04 10:39:23.483132",
+ "modified_by": "ritesh.sharma@duxdigitech.com",
+ "module": "Vehicle Management Nagpur",
+ "name": "Log Details VMN",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

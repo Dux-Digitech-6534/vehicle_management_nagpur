@@ -1,0 +1,202 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:MD - {##}",
+ "creation": "2025-11-05 16:41:40.308923",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "small_text_vnsd",
+  "section_break_citd",
+  "md_date",
+  "md_vehicle_name",
+  "column_break_emjm",
+  "md_type_of_vehicle",
+  "md_vehicle_location",
+  "column_break_nuwt",
+  "md_vehicle_number",
+  "md_select_campus",
+  "maintenance_information_section",
+  "md_vendor_name",
+  "md_invoice_attacment",
+  "column_break_cvjj",
+  "md_invoice_number",
+  "md_work_details",
+  "column_break_daab",
+  "md_total_repairingamount",
+  "section_break_zvol",
+  "md_remark",
+  "amended_from",
+  "workflow_state"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_citd",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Details"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Maintenance Details VMN",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Approval Status",
+   "options": "Draft\nPending\nApproved\nRejected\nCancelled",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "md_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "md_type_of_vehicle",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type of Vehicle",
+   "options": "BUS",
+   "reqd": 1
+  },
+  {
+   "fieldname": "md_vehicle_number",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vehicle Number",
+   "options": "Vehicle Details VMN",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "md_vehicle_number.vd_vehicle_name",
+   "fieldname": "md_vehicle_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Vehicle Name"
+  },
+  {
+   "fieldname": "maintenance_information_section",
+   "fieldtype": "Section Break",
+   "label": "Maintenance Information"
+  },
+  {
+   "fieldname": "md_vendor_name",
+   "fieldtype": "Link",
+   "label": "Vendor Name",
+   "options": "Vendor Details VMN"
+  },
+  {
+   "fieldname": "md_invoice_number",
+   "fieldtype": "Data",
+   "label": "Invoice Number"
+  },
+  {
+   "fieldname": "column_break_emjm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_nuwt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_cvjj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_daab",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_zvol",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "md_remark",
+   "fieldtype": "Small Text",
+   "label": "Remark"
+  },
+  {
+   "fieldname": "md_invoice_attacment",
+   "fieldtype": "Attach Image",
+   "label": "Invoice Attacment"
+  },
+  {
+   "fetch_from": "md_vehicle_number.vd_location",
+   "fieldname": "md_vehicle_location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vehicle Location"
+  },
+  {
+   "fieldname": "md_total_repairingamount",
+   "fieldtype": "Currency",
+   "label": "Total Repairing Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "md_select_campus",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Campus",
+   "options": "Campus Details VMN"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state == 'Rejected'",
+   "fieldname": "small_text_vnsd",
+   "fieldtype": "Small Text",
+   "label": "Reject Remark"
+  },
+  {
+   "fieldname": "md_work_details",
+   "fieldtype": "Small Text",
+   "label": "Work Details",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-03 15:34:05.617655",
+ "modified_by": "ritesh.sharma@duxdigitech.com",
+ "module": "Vehicle Management Nagpur",
+ "name": "Maintenance Details VMN",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

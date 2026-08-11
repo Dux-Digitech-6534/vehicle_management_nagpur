@@ -1,0 +1,2693 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+.vmnp-page-host .page-head {
+	display: none;
+}
+
+.vmnp-page-host .page-body,
+.vmnp-page-host .layout-main,
+.vmnp-page-host .layout-main-section-wrapper,
+.vmnp-page-host .layout-main-section,
+.vmnp-page-host .page-content {
+	margin: 0 !important;
+	padding: 0 !important;
+	max-width: none !important;
+	width: 100% !important;
+}
+
+.vmnp-page-host .layout-main-section {
+	border: 0 !important;
+}
+
+.vmnp-root {
+	--vmnp-font-ui: "Geist", "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+	--vmnp-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+	/* DUX Digitech Design System — light theme tokens */
+	--vmnp-primary: #5c4de6; /* Iris */
+	--vmnp-primary-strong: #4a3cd0; /* Iris Deep */
+	--vmnp-primary-soft: #6d5ef6; /* Iris Soft */
+	--vmnp-blue: #4f9fd8; /* gradient mid-stop */
+	--vmnp-teal: #0e9c8b; /* Cyan — data accent */
+	--vmnp-teal-soft: #0cb4a0; /* Cyan Soft */
+	--vmnp-amber: #b0741a; /* pending */
+	--vmnp-danger: #c8475e; /* error */
+	--vmnp-success: #15916a; /* approved */
+	--vmnp-text: #1a2030; /* fg-1 */
+	--vmnp-text-soft: #586273; /* fg-2 */
+	--vmnp-muted: #8a93a3; /* fg-3 */
+	--vmnp-faint: #aab2bf; /* fg-4 */
+	--vmnp-bg: #f3f4f7; /* Canvas */
+	--vmnp-surface: #ffffff; /* Surface 1 */
+	--vmnp-surface-soft: #f0f1f5; /* Sunken */
+	--vmnp-border: #e7e9ee; /* Hairline */
+	--vmnp-border-strong: #dcdfe6; /* Hairline 2 */
+	--vmnp-sidebar: #ffffff;
+	--vmnp-sidebar-hover: #f0eefc;
+	--vmnp-shadow: 0 16px 38px rgba(26, 32, 48, 0.08);
+	--vmnp-shadow-hover: 0 18px 36px rgba(92, 77, 230, 0.16);
+	/* Flat theme — gradient hata kar solid iris (Dux Portal jaisa). */
+	--vmnp-gradient: #5c4de6;
+	--vmnp-gradient-soft: rgba(92, 77, 230, 0.06);
+	/* radii — 4px base scale */
+	--vmnp-r-sm: 8px;
+	--vmnp-r-md: 12px;
+	--vmnp-r-lg: 16px;
+	--vmnp-r-xl: 22px;
+	--vmnp-sidebar-width: 272px;
+	display: grid;
+	grid-template-columns: var(--vmnp-sidebar-width) minmax(0, 1fr);
+	min-height: calc(100vh - var(--navbar-height, 48px));
+	background: var(--vmnp-bg);
+	color: var(--vmnp-text);
+	font-family: var(--vmnp-font-ui);
+	transition: background-color 180ms ease, color 180ms ease;
+}
+
+.vmnp-root[data-theme="dark"] {
+	/* DUX Digitech Design System — dark theme tokens */
+	--vmnp-primary: #6d5ef6; /* Iris (dark) */
+	--vmnp-primary-strong: #5c4de6;
+	--vmnp-primary-soft: #8577f8;
+	--vmnp-teal: #2dd4bf; /* Cyan (dark) */
+	--vmnp-teal-soft: #5ce0d0;
+	--vmnp-text: #eef1f7;
+	--vmnp-text-soft: #a6b0c2;
+	--vmnp-muted: #7d8698;
+	--vmnp-faint: #646d7e;
+	--vmnp-bg: #0a0d13; /* Canvas (dark) */
+	--vmnp-surface: #11151e; /* Surface 1 (dark) */
+	--vmnp-surface-soft: #1e2433; /* Surface 3 (dark) */
+	--vmnp-border: #232a38;
+	--vmnp-border-strong: #313a4c;
+	--vmnp-sidebar: #0d1119;
+	--vmnp-sidebar-hover: #1a1f33;
+	--vmnp-shadow: 0 18px 38px rgba(0, 0, 0, 0.34);
+	--vmnp-shadow-hover: 0 22px 42px rgba(0, 0, 0, 0.42);
+	--vmnp-gradient: #6d5ef6;
+	--vmnp-gradient-soft: rgba(92, 77, 230, 0.06);
+}
+
+.vmnp-root *,
+.vmnp-root *::before,
+.vmnp-root *::after {
+	box-sizing: border-box;
+}
+
+.vmnp-root button,
+.vmnp-root input,
+.vmnp-root select,
+.vmnp-root textarea {
+	font: inherit;
+}
+
+.vmnp-root .vmnp-kpi-copy strong,
+.vmnp-root .vmnp-pagination > span,
+.vmnp-root td:is(
+	[data-fieldtype="Currency"],
+	[data-fieldtype="Float"],
+	[data-fieldtype="Int"],
+	[data-fieldtype="Percent"],
+	[data-fieldtype="Date"],
+	[data-fieldtype="Datetime"],
+	[data-fieldtype="Time"],
+	[data-fieldname="name"],
+	[data-fieldname*="number" i],
+	[data-fieldname*="reading" i],
+	[data-fieldname*="distance" i],
+	[data-fieldname*="amount" i],
+	[data-fieldname*="quantity" i],
+	[data-fieldname*="total" i],
+	[data-fieldname*="rate" i],
+	[data-fieldname*="year" i]
+),
+.vmnp-root .vmnp-detail-field:is(
+	[data-fieldtype="Currency"],
+	[data-fieldtype="Float"],
+	[data-fieldtype="Int"],
+	[data-fieldtype="Percent"],
+	[data-fieldtype="Date"],
+	[data-fieldtype="Datetime"],
+	[data-fieldtype="Time"],
+	[data-fieldname="name"],
+	[data-fieldname*="number" i],
+	[data-fieldname*="reading" i],
+	[data-fieldname*="distance" i],
+	[data-fieldname*="amount" i],
+	[data-fieldname*="quantity" i],
+	[data-fieldname*="total" i],
+	[data-fieldname*="rate" i],
+	[data-fieldname*="year" i]
+) strong,
+.vmnp-root .vmnp-control-slot[data-mono="1"] input,
+.vmnp-root .vmnp-control-slot[data-mono="1"] select,
+.vmnp-root .vmnp-control-slot[data-mono="1"] .control-value {
+	font-family: var(--vmnp-font-mono) !important;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.01em;
+}
+
+.vmnp-sidebar {
+	position: sticky;
+	top: var(--navbar-height, 48px);
+	z-index: 30;
+	display: flex;
+	flex-direction: column;
+	width: var(--vmnp-sidebar-width);
+	height: calc(100vh - var(--navbar-height, 48px));
+	overflow: hidden;
+	background: var(--vmnp-sidebar);
+	border-right: 1px solid var(--vmnp-border);
+	transition: transform 220ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.vmnp-brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 86px;
+	padding: 17px 18px;
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+.vmnp-brand-mark,
+.vmnp-user-avatar {
+	display: grid;
+	flex: 0 0 auto;
+	place-items: center;
+	background: var(--vmnp-gradient);
+	color: #fff;
+	font-weight: 800;
+	box-shadow: 0 10px 24px rgba(92, 77, 230, 0.25);
+}
+
+.vmnp-brand-mark {
+	width: 48px;
+	height: 48px;
+	border-radius: 15px;
+	font-size: 15px;
+}
+
+.vmnp-brand-copy {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.vmnp-brand-copy strong {
+	overflow: hidden;
+	font-size: 14px;
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vmnp-brand-copy span {
+	margin-top: 4px;
+	color: var(--vmnp-muted);
+	font-size: 9px;
+	font-weight: 800;
+	letter-spacing: 0.11em;
+	text-transform: uppercase;
+}
+
+.vmnp-sidebar-close {
+	display: none !important;
+}
+
+.vmnp-nav-search {
+	position: relative;
+	margin: 16px 14px 10px;
+	color: var(--vmnp-muted);
+}
+
+.vmnp-nav-search > svg {
+	position: absolute;
+	top: 50%;
+	left: 13px;
+	width: 15px;
+	height: 15px;
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+
+.vmnp-nav-search input,
+.vmnp-toolbar-search input,
+.vmnp-input,
+.vmnp-select {
+	width: 100%;
+	height: 42px;
+	color: var(--vmnp-text);
+	background: var(--vmnp-surface-soft);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 11px;
+	outline: none;
+	transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.vmnp-nav-search input {
+	padding: 0 12px 0 38px;
+	font-size: 12px;
+}
+
+.vmnp-nav-search input:focus,
+.vmnp-toolbar-search input:focus,
+.vmnp-input:focus,
+.vmnp-select:focus {
+	border-color: var(--vmnp-primary);
+	box-shadow: 0 0 0 3px rgba(92, 77, 230, 0.13);
+}
+
+.vmnp-navigation {
+	flex: 1;
+	overflow-x: hidden;
+	overflow-y: auto;
+	padding: 2px 12px 18px;
+	scrollbar-width: thin;
+}
+
+.vmnp-nav-group {
+	margin-top: 17px;
+}
+
+.vmnp-nav-group-title {
+	padding: 0 10px 7px;
+	color: var(--vmnp-muted);
+	font-size: 9px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.vmnp-nav-item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	width: 100%;
+	min-height: 42px;
+	margin: 3px 0;
+	padding: 9px 11px;
+	color: var(--vmnp-text-soft);
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 11px;
+	font-size: 12px;
+	font-weight: 650;
+	text-align: left;
+	cursor: pointer;
+	transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.vmnp-nav-item:hover {
+	color: var(--vmnp-primary);
+	background: var(--vmnp-sidebar-hover);
+	transform: translateX(2px);
+}
+
+.vmnp-nav-item:active {
+	transform: translateX(2px) scale(0.985);
+}
+
+.vmnp-nav-item.active {
+	color: var(--vmnp-primary);
+	background: var(--vmnp-sidebar-hover);
+	border-color: rgba(92, 77, 230, 0.19);
+}
+
+.vmnp-nav-item.active::before {
+	position: absolute;
+	top: 9px;
+	bottom: 9px;
+	left: -1px;
+	width: 3px;
+	background: var(--vmnp-gradient);
+	border-radius: 0 4px 4px 0;
+	content: "";
+}
+
+.vmnp-nav-icon {
+	display: grid;
+	flex: 0 0 25px;
+	place-items: center;
+	width: 25px;
+	height: 25px;
+	color: currentColor;
+}
+
+.vmnp-nav-icon svg {
+	width: 15px;
+	height: 15px;
+}
+
+.vmnp-menu-empty {
+	padding: 24px 10px;
+	color: var(--vmnp-muted);
+	font-size: 12px;
+	text-align: center;
+}
+
+.vmnp-nav-skeleton {
+	height: 39px;
+	margin: 8px 0;
+	background: linear-gradient(90deg, var(--vmnp-surface-soft), var(--vmnp-border), var(--vmnp-surface-soft));
+	background-size: 200% 100%;
+	border-radius: 10px;
+	animation: vmnp-shimmer 1.3s infinite;
+}
+
+.vmnp-nav-skeleton.short {
+	width: 72%;
+}
+
+.vmnp-sidebar-footer {
+	padding: 13px;
+	background: var(--vmnp-sidebar);
+	border-top: 1px solid var(--vmnp-border);
+}
+
+.vmnp-user {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 4px;
+}
+
+.vmnp-user-avatar {
+	width: 35px;
+	height: 35px;
+	border-radius: 50%;
+	font-size: 11px;
+}
+
+.vmnp-user > span:last-child {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.vmnp-user strong {
+	overflow: hidden;
+	font-size: 11px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vmnp-user small {
+	color: var(--vmnp-muted);
+	font-size: 9px;
+}
+
+.vmnp-theme-switch {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	height: 36px;
+	margin-top: 10px;
+	color: #fff;
+	background: var(--vmnp-gradient);
+	border: 0;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 750;
+	cursor: pointer;
+	box-shadow: 0 8px 18px rgba(73, 95, 198, 0.19);
+	transition: box-shadow 150ms ease, transform 150ms ease, filter 150ms ease;
+}
+
+.vmnp-theme-switch:hover {
+	filter: saturate(1.13) brightness(1.03);
+	box-shadow: 0 11px 22px rgba(73, 95, 198, 0.28);
+	transform: translateY(-1px);
+}
+
+.vmnp-theme-switch:active {
+	transform: translateY(0) scale(0.98);
+}
+
+.vmnp-main {
+	min-width: 0;
+	min-height: calc(100vh - var(--navbar-height, 48px));
+	background: var(--vmnp-bg);
+}
+
+.vmnp-topbar {
+	position: sticky;
+	top: var(--navbar-height, 48px);
+	z-index: 60;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 62px;
+	padding: 10px clamp(18px, 2.4vw, 38px);
+	/* Pehle 88% translucent tha bina backdrop-filter ke, is liye scroll karta
+	   hua content topbar ke aar-paar dikhta tha. */
+	/* Solid background aur koi backdrop-filter nahi — filter alag compositing
+	   layer banata hai jisme light theme me hero content topbar ke upar chad
+	   jaata tha. */
+	background: var(--vmnp-bg);
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+.vmnp-topbar-start,
+.vmnp-topbar-actions,
+.vmnp-heading-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.vmnp-route {
+	display: flex;
+	flex-direction: column;
+}
+
+.vmnp-route span {
+	color: var(--vmnp-muted);
+	font-size: 8px;
+	font-weight: 800;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.vmnp-route strong {
+	margin-top: 2px;
+	font-size: 14px;
+}
+
+.vmnp-icon-button {
+	display: inline-grid;
+	flex: 0 0 auto;
+	place-items: center;
+	width: 38px;
+	height: 38px;
+	padding: 0;
+	color: var(--vmnp-text-soft);
+	background: var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 11px;
+	cursor: pointer;
+	transition: color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.vmnp-icon-button:hover {
+	color: var(--vmnp-primary);
+	border-color: rgba(92, 77, 230, 0.45);
+	box-shadow: 0 8px 20px rgba(55, 63, 107, 0.12);
+	transform: translateY(-1px);
+}
+
+.vmnp-icon-button:active {
+	transform: scale(0.96);
+}
+
+.vmnp-icon-button svg,
+.vmnp-theme-switch svg {
+	width: 15px;
+	height: 15px;
+}
+
+.vmnp-menu-button {
+	display: none;
+}
+
+.vmnp-theme-switch-top {
+	width: auto;
+	min-width: 83px;
+	height: 38px;
+	margin: 0;
+	padding: 0 14px;
+}
+
+.vmnp-view {
+	min-height: calc(100vh - var(--navbar-height, 48px) - 62px);
+	padding: clamp(18px, 2.4vw, 38px);
+}
+
+.vmnp-dashboard,
+.vmnp-page {
+	width: min(1500px, 100%);
+	margin: 0 auto;
+}
+
+.vmnp-hero {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 218px;
+	overflow: hidden;
+	padding: clamp(27px, 4vw, 52px);
+	background: var(--vmnp-gradient-soft), var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border);
+	border-top: 3px solid transparent;
+	border-radius: 22px;
+	box-shadow: var(--vmnp-shadow);
+}
+
+.vmnp-hero::before {
+	position: absolute;
+	top: -3px;
+	right: 0;
+	left: 0;
+	height: 3px;
+	background: var(--vmnp-gradient);
+	content: "";
+}
+
+.vmnp-hero-copy {
+	position: relative;
+	z-index: 2;
+	max-width: 820px;
+}
+
+.vmnp-greeting {
+	display: inline-flex;
+	align-items: center;
+	min-height: 30px;
+	margin-bottom: 19px;
+	padding: 5px 13px;
+	color: var(--vmnp-teal);
+	background: color-mix(in srgb, var(--vmnp-teal) 8%, var(--vmnp-surface));
+	border: 1px solid color-mix(in srgb, var(--vmnp-teal) 28%, var(--vmnp-border));
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 750;
+}
+
+.vmnp-eyebrow,
+.vmnp-section-kicker {
+	color: var(--vmnp-primary);
+	font-size: 9px;
+	font-weight: 850;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.vmnp-hero h1,
+.vmnp-page-heading h1 {
+	margin: 8px 0 8px;
+	color: var(--vmnp-text);
+	font-weight: 800;
+	letter-spacing: -0.035em;
+}
+
+.vmnp-hero h1 {
+	font-size: clamp(30px, 4vw, 48px);
+}
+
+.vmnp-hero h1 span {
+	background: var(--vmnp-gradient);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.vmnp-hero p,
+.vmnp-page-heading p,
+.vmnp-panel-head p {
+	margin: 0;
+	color: var(--vmnp-text-soft);
+	line-height: 1.6;
+}
+
+.vmnp-hero p {
+	max-width: 730px;
+	font-size: 13px;
+}
+
+.vmnp-hero-art {
+	position: relative;
+	display: grid;
+	flex: 0 0 170px;
+	place-items: center;
+	width: 170px;
+	height: 150px;
+	margin-left: 30px;
+}
+
+.vmnp-orbit {
+	position: absolute;
+	inset: 4px;
+	border: 1px solid rgba(92, 77, 230, 0.22);
+	border-radius: 50%;
+}
+
+.vmnp-orbit::before,
+.vmnp-orbit::after {
+	position: absolute;
+	border-radius: 50%;
+	content: "";
+}
+
+.vmnp-orbit::before {
+	top: 8px;
+	right: 22px;
+	width: 13px;
+	height: 13px;
+	background: var(--vmnp-teal);
+	box-shadow: 0 0 0 7px rgba(14, 156, 139, 0.1);
+}
+
+.vmnp-orbit::after {
+	bottom: 14px;
+	left: 16px;
+	width: 10px;
+	height: 10px;
+	background: var(--vmnp-primary);
+	box-shadow: 0 0 0 7px rgba(92, 77, 230, 0.1);
+}
+
+.vmnp-hero-mark {
+	display: grid;
+	place-items: center;
+	width: 82px;
+	height: 82px;
+	color: #fff;
+	background: var(--vmnp-gradient);
+	border-radius: 25px;
+	font-size: 25px;
+	font-weight: 900;
+	box-shadow: 0 20px 36px rgba(74, 92, 202, 0.27);
+	transform: rotate(-7deg);
+}
+
+.vmnp-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 16px;
+	margin-top: 18px;
+}
+
+.vmnp-kpi-card,
+.vmnp-module-card,
+.vmnp-recent-row {
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.vmnp-kpi-card {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	min-width: 0;
+	min-height: 126px;
+	padding: 20px;
+	overflow: hidden;
+	background: var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 17px;
+	box-shadow: var(--vmnp-shadow);
+	transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.vmnp-kpi-card::before {
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: 0;
+	height: 3px;
+	background: var(--vmnp-gradient);
+	content: "";
+}
+
+.vmnp-kpi-card:hover,
+.vmnp-module-card:hover {
+	border-color: rgba(92, 77, 230, 0.42);
+	box-shadow: var(--vmnp-shadow-hover);
+	transform: translateY(-3px);
+}
+
+.vmnp-kpi-card:active,
+.vmnp-module-card:active {
+	transform: translateY(-1px) scale(0.99);
+}
+
+.vmnp-kpi-icon,
+.vmnp-module-icon,
+.vmnp-recent-icon {
+	display: grid;
+	flex: 0 0 auto;
+	place-items: center;
+	color: var(--vmnp-primary);
+	background: color-mix(in srgb, var(--vmnp-primary) 10%, var(--vmnp-surface));
+	border-radius: 13px;
+}
+
+.vmnp-kpi-icon {
+	width: 48px;
+	height: 48px;
+}
+
+.vmnp-kpi-icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.vmnp-kpi-copy,
+.vmnp-recent-copy {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.vmnp-kpi-copy small,
+.vmnp-recent-copy small {
+	color: var(--vmnp-muted);
+	font-size: 9px;
+	font-weight: 800;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+}
+
+.vmnp-kpi-copy strong {
+	margin: 4px 0 2px;
+	font-size: 25px;
+	line-height: 1;
+}
+
+.vmnp-kpi-copy em,
+.vmnp-recent-copy em {
+	overflow: hidden;
+	color: var(--vmnp-text-soft);
+	font-size: 9px;
+	font-style: normal;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vmnp-card-arrow {
+	flex: 0 0 auto;
+	color: var(--vmnp-muted);
+}
+
+.vmnp-dashboard-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1.16fr) minmax(360px, 0.84fr);
+	gap: 18px;
+	margin-top: 18px;
+}
+
+.vmnp-panel {
+	background: var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 18px;
+	box-shadow: var(--vmnp-shadow);
+}
+
+.vmnp-panel-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 22px 24px 17px;
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+.vmnp-panel-head h2 {
+	margin: 4px 0 2px;
+	font-size: 17px;
+}
+
+.vmnp-panel-head p {
+	font-size: 10px;
+}
+
+.vmnp-text-button,
+.vmnp-back-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0;
+	color: var(--vmnp-primary);
+	background: transparent;
+	border: 0;
+	font-size: 11px;
+	font-weight: 750;
+	cursor: pointer;
+}
+
+.vmnp-text-button:hover,
+.vmnp-back-link:hover {
+	color: var(--vmnp-teal);
+}
+
+.vmnp-text-button svg,
+.vmnp-back-link svg {
+	width: 14px;
+	height: 14px;
+}
+
+.vmnp-recent-list {
+	padding: 7px 12px 12px;
+}
+
+.vmnp-recent-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	min-height: 68px;
+	padding: 10px 12px;
+	background: transparent;
+	border: 0;
+	border-bottom: 1px solid var(--vmnp-border);
+	border-radius: 10px;
+	transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.vmnp-recent-row:last-child {
+	border-bottom: 0;
+}
+
+.vmnp-recent-row:hover {
+	background: var(--vmnp-surface-soft);
+	transform: translateX(2px);
+}
+
+.vmnp-recent-icon {
+	width: 39px;
+	height: 39px;
+}
+
+.vmnp-recent-copy strong {
+	margin: 2px 0;
+	overflow: hidden;
+	font-size: 11px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vmnp-module-groups {
+	padding: 17px;
+}
+
+.vmnp-module-group + .vmnp-module-group {
+	margin-top: 19px;
+}
+
+.vmnp-module-group h3 {
+	margin: 0 0 9px 3px;
+	color: var(--vmnp-muted);
+	font-size: 9px;
+	font-weight: 850;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.vmnp-module-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 9px;
+}
+
+.vmnp-module-card {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	min-height: 76px;
+	padding: 12px;
+	background: var(--vmnp-surface-soft);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 13px;
+	transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.vmnp-module-icon {
+	width: 36px;
+	height: 36px;
+}
+
+.vmnp-module-card > span:nth-child(2) {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.vmnp-module-card strong {
+	font-size: 10px;
+}
+
+.vmnp-module-card small {
+	display: -webkit-box;
+	margin-top: 2px;
+	overflow: hidden;
+	color: var(--vmnp-muted);
+	font-size: 8px;
+	line-height: 1.35;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+.vmnp-module-card > svg {
+	width: 13px;
+	height: 13px;
+	color: var(--vmnp-muted);
+}
+
+.vmnp-page-heading {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 25px;
+	margin-bottom: 18px;
+	padding: 3px 2px;
+}
+
+.vmnp-page-heading h1 {
+	font-size: clamp(26px, 3vw, 38px);
+}
+
+.vmnp-page-heading p {
+	max-width: 760px;
+	font-size: 12px;
+}
+
+.vmnp-page-heading .vmnp-back-link {
+	margin-bottom: 17px;
+}
+
+.vmnp-primary-button,
+.vmnp-secondary-button,
+.vmnp-submit-button,
+.vmnp-sort-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	min-height: 40px;
+	padding: 9px 16px;
+	border-radius: 11px;
+	font-size: 11px;
+	font-weight: 750;
+	cursor: pointer;
+	transition: box-shadow 150ms ease, transform 150ms ease, filter 150ms ease, border-color 150ms ease;
+}
+
+.vmnp-primary-button {
+	color: #fff;
+	background: var(--vmnp-gradient);
+	border: 0;
+	box-shadow: 0 9px 20px rgba(79, 77, 205, 0.23);
+}
+
+.vmnp-submit-button {
+	color: #fff;
+	background: var(--vmnp-teal);
+	border: 0;
+	box-shadow: 0 9px 20px rgba(12, 159, 141, 0.2);
+}
+
+.vmnp-secondary-button,
+.vmnp-sort-button {
+	color: var(--vmnp-text-soft);
+	background: var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border);
+}
+
+.vmnp-primary-button:hover,
+.vmnp-submit-button:hover {
+	filter: brightness(1.04) saturate(1.12);
+	box-shadow: 0 12px 25px rgba(79, 77, 205, 0.31);
+	transform: translateY(-1px);
+}
+
+.vmnp-secondary-button:hover,
+.vmnp-sort-button:hover {
+	color: var(--vmnp-primary);
+	border-color: rgba(92, 77, 230, 0.45);
+	transform: translateY(-1px);
+}
+
+.vmnp-primary-button:active,
+.vmnp-secondary-button:active,
+.vmnp-submit-button:active,
+.vmnp-sort-button:active {
+	transform: scale(0.98);
+}
+
+.vmnp-primary-button:disabled,
+.vmnp-secondary-button:disabled,
+.vmnp-submit-button:disabled {
+	opacity: 0.48;
+	pointer-events: none;
+}
+
+.vmnp-primary-button svg,
+.vmnp-secondary-button svg,
+.vmnp-submit-button svg,
+.vmnp-sort-button svg {
+	width: 14px;
+	height: 14px;
+}
+
+.vmnp-list-panel {
+	overflow: hidden;
+}
+
+.vmnp-list-toolbar {
+	display: grid;
+	grid-template-columns: minmax(150px, 1fr) auto auto;
+	align-items: center;
+	gap: 9px;
+	padding: 16px;
+	background: var(--vmnp-surface);
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+.vmnp-toolbar-search {
+	position: relative;
+	margin: 0;
+	color: var(--vmnp-muted);
+}
+
+.vmnp-toolbar-search svg {
+	position: absolute;
+	top: 50%;
+	left: 13px;
+	z-index: 2;
+	width: 15px;
+	height: 15px;
+	transform: translateY(-50%);
+}
+
+.vmnp-toolbar-search input {
+	padding: 0 12px 0 38px;
+}
+
+.vmnp-input,
+.vmnp-select {
+	padding: 0 12px;
+	font-size: 13px;
+}
+
+textarea.vmnp-input {
+	height: auto;
+	min-height: 92px;
+	padding-top: 10px;
+	resize: vertical;
+}
+
+.vmnp-sort-button {
+	height: 42px;
+	white-space: nowrap;
+}
+
+.vmnp-clear-button {
+	width: 42px;
+	height: 42px;
+}
+
+.vmnp-table-wrap {
+	min-height: 360px;
+	overflow: auto;
+}
+
+.vmnp-table {
+	width: 100%;
+	min-width: 920px;
+	border-collapse: collapse;
+}
+
+.vmnp-table th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	height: 47px;
+	padding: 10px 14px;
+	color: var(--vmnp-muted);
+	background: var(--vmnp-surface-soft);
+	border-bottom: 1px solid var(--vmnp-border-strong);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-align: left;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.vmnp-table td {
+	max-width: 250px;
+	height: 57px;
+	padding: 10px 14px;
+	overflow: hidden;
+	color: var(--vmnp-text-soft);
+	border-bottom: 1px solid var(--vmnp-border);
+	font-size: 13px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vmnp-table tr {
+	outline: none;
+	transition: background-color 130ms ease, box-shadow 130ms ease;
+}
+
+.vmnp-table tbody tr:hover,
+.vmnp-table tbody tr:focus {
+	background: color-mix(in srgb, var(--vmnp-primary) 5%, var(--vmnp-surface));
+	box-shadow: inset 3px 0 var(--vmnp-primary);
+	cursor: pointer;
+}
+
+.vmnp-table td:first-child {
+	color: var(--vmnp-text);
+	font-weight: 700;
+}
+
+.vmnp-row-action {
+	width: 44px;
+	color: var(--vmnp-primary) !important;
+	text-align: right;
+}
+
+.vmnp-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 15px;
+	min-height: 68px;
+	padding: 13px 16px;
+	color: var(--vmnp-muted);
+	background: var(--vmnp-surface);
+	border-top: 1px solid var(--vmnp-border);
+	font-size: 10px;
+}
+
+.vmnp-pagination > div {
+	display: flex;
+	gap: 8px;
+}
+
+.vmnp-detail-sections,
+.vmnp-record-form {
+	display: grid;
+	gap: 16px;
+}
+
+.vmnp-detail-section,
+.vmnp-form-section {
+	overflow: hidden;
+}
+
+.vmnp-detail-section h2 {
+	margin: 0;
+	padding: 17px 20px;
+	font-size: 14px;
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+/* Numbered section header — "01  Log Details            Log Details VMN" */
+.vmnp-panel-header {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	padding: 13px 18px;
+	background: var(--vmnp-surface-soft);
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+.vmnp-panel-header > span {
+	flex: 0 0 auto;
+	width: 23px;
+	height: 23px;
+	display: grid;
+	place-items: center;
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--vmnp-primary) 10%, var(--vmnp-surface));
+	color: var(--vmnp-primary);
+	font-family: var(--vmnp-font-mono);
+	font-size: 10.5px;
+	font-weight: 700;
+}
+
+.vmnp-panel-header h3 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 650;
+	color: var(--vmnp-text);
+}
+
+.vmnp-panel-header small {
+	margin-left: auto;
+	color: var(--vmnp-muted);
+	font-size: 11.5px;
+}
+
+.vmnp-detail-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.vmnp-detail-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-height: 83px;
+	padding: 17px 20px;
+	border-right: 1px solid var(--vmnp-border);
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+.vmnp-detail-field:nth-child(3n) {
+	border-right: 0;
+}
+
+.vmnp-detail-field small,
+.vmnp-detail-field > span {
+	color: var(--vmnp-muted);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.vmnp-detail-field strong {
+	overflow-wrap: anywhere;
+	color: var(--vmnp-text);
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.vmnp-muted {
+	color: var(--vmnp-muted);
+	font-weight: 500;
+}
+
+.vmnp-status,
+.vmnp-badge {
+	display: inline-flex;
+	align-items: center;
+	width: fit-content;
+	padding: 5px 9px;
+	color: var(--vmnp-text-soft);
+	background: var(--vmnp-surface-soft);
+	border: 1px solid var(--vmnp-border);
+	gap: 6px;
+	border-radius: 999px;
+	font-size: 10.5px;
+	font-weight: 600;
+}
+
+.vmnp-status > i {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.vmnp-status.submitted,
+.vmnp-badge.success {
+	color: var(--vmnp-teal);
+	background: color-mix(in srgb, var(--vmnp-teal) 9%, var(--vmnp-surface));
+	border-color: color-mix(in srgb, var(--vmnp-teal) 25%, var(--vmnp-border));
+}
+
+.vmnp-status.draft {
+	color: var(--vmnp-amber);
+	background: color-mix(in srgb, var(--vmnp-amber) 8%, var(--vmnp-surface));
+	border-color: color-mix(in srgb, var(--vmnp-amber) 25%, var(--vmnp-border));
+}
+
+.vmnp-file-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	color: var(--vmnp-primary);
+}
+
+.vmnp-form-section-head {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	padding: 16px 19px;
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+.vmnp-form-section-head > span {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	color: var(--vmnp-primary);
+	background: color-mix(in srgb, var(--vmnp-primary) 9%, var(--vmnp-surface));
+	border-radius: 9px;
+	font-size: 9px;
+	font-weight: 850;
+}
+
+.vmnp-form-section-head h2 {
+	margin: 0;
+	font-size: 14px;
+}
+
+.vmnp-form-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	/* start — warna Remark textarea apni poori row ko lamba kar deta hai aur
+	   Distance/Total Hours ka text box me upar chipak jaata hai. */
+	align-items: start;
+	gap: 18px;
+	padding: 22px;
+}
+
+.vmnp-control-slot.wide {
+	grid-column: span 2;
+}
+
+.vmnp-required-note {
+	padding-top: 13px;
+	color: var(--vmnp-text-soft);
+	font-size: 10px;
+}
+
+.vmnp-required-note b,
+.vmnp-required {
+	color: var(--vmnp-danger);
+}
+
+.vmnp-field-label,
+.vmnp-root .control-label {
+	display: inline-block;
+	margin: 0 0 7px;
+	color: var(--vmnp-text);
+	font-size: 11px;
+	font-weight: 600;
+}
+
+/* Frappe ke apne controls desk ka default font size uthate hain, jo is page ke
+   baaki hisson se bada padta tha. Design system ka body size 14px hai. */
+.vmnp-power-canvas .vmnp-control-slot .form-control,
+.vmnp-power-canvas .vmnp-control-slot input,
+.vmnp-power-canvas .vmnp-control-slot select,
+.vmnp-power-canvas .vmnp-control-slot textarea {
+	font-size: 14px;
+}
+
+.vmnp-field-label .vmnp-required {
+	margin-left: 3px;
+}
+
+.vmnp-field-help,
+.vmnp-root .help-box {
+	display: block;
+	margin-top: 5px;
+	color: var(--vmnp-muted);
+	font-size: 9px;
+}
+
+/* Read-only values (Total DG Unit, Total Hours, Distance) — pehle ye help-text
+   ke saath group the, is liye 9px muted aur box me upar chipke dikhte the.
+   Ab input jaisi height aur vertically center. */
+.vmnp-root .control-value.like-disabled-input {
+	display: flex;
+	align-items: center;
+	min-height: 42px;
+	margin: 0;
+	padding: 0 12px;
+	color: var(--vmnp-text);
+	font-size: 13px;
+}
+
+.vmnp-date-input {
+	position: relative;
+}
+
+.vmnp-date-input svg {
+	position: absolute;
+	top: 50%;
+	left: 12px;
+	z-index: 2;
+	width: 15px;
+	height: 15px;
+	color: var(--vmnp-muted);
+	transform: translateY(-50%);
+}
+
+.vmnp-date-input .vmnp-input {
+	padding-left: 37px;
+}
+
+.vmnp-root .form-group {
+	margin-bottom: 0;
+}
+
+.vmnp-root .form-control,
+.vmnp-root .input-with-feedback,
+.vmnp-root .like-disabled-input,
+.vmnp-root .frappe-control .ql-editor,
+.vmnp-root .frappe-control .ql-container {
+	color: var(--vmnp-text) !important;
+	background: var(--vmnp-surface-soft) !important;
+	border-color: var(--vmnp-border) !important;
+	border-radius: 11px !important;
+}
+
+.vmnp-root .form-control,
+.vmnp-root .input-with-feedback,
+.vmnp-root .like-disabled-input {
+	min-height: 42px;
+	font-size: 11px !important;
+}
+
+.vmnp-root .form-control:focus,
+.vmnp-root .input-with-feedback:focus {
+	border-color: var(--vmnp-primary) !important;
+	box-shadow: 0 0 0 3px rgba(92, 77, 230, 0.13) !important;
+}
+
+.vmnp-root .input-xs {
+	height: 42px;
+	padding: 8px 12px;
+}
+
+.vmnp-root .checkbox .label-area,
+.vmnp-root .checkbox label {
+	color: var(--vmnp-text);
+	font-size: 10px;
+}
+
+.vmnp-form-actions {
+	position: sticky;
+	bottom: 12px;
+	z-index: 8;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 9px;
+	padding: 14px 16px;
+	background: color-mix(in srgb, var(--vmnp-surface) 92%, transparent);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 15px;
+	box-shadow: 0 13px 32px rgba(23, 31, 54, 0.13);
+	backdrop-filter: blur(13px);
+}
+
+.vmnp-state,
+.vmnp-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	min-height: 420px;
+	padding: 32px;
+	color: var(--vmnp-text-soft);
+	text-align: center;
+}
+
+.vmnp-state strong,
+.vmnp-empty strong {
+	margin-top: 13px;
+	color: var(--vmnp-text);
+	font-size: 14px;
+}
+
+.vmnp-state p,
+.vmnp-empty p {
+	max-width: 520px;
+	margin: 6px 0 15px;
+	color: var(--vmnp-muted);
+	font-size: 10px;
+	line-height: 1.55;
+}
+
+.vmnp-empty {
+	min-height: 330px;
+}
+
+.vmnp-empty > span,
+.vmnp-error-state > span {
+	display: grid;
+	place-items: center;
+	width: 56px;
+	height: 56px;
+	color: var(--vmnp-primary);
+	background: color-mix(in srgb, var(--vmnp-primary) 8%, var(--vmnp-surface));
+	border: 1px solid color-mix(in srgb, var(--vmnp-primary) 20%, var(--vmnp-border));
+	border-radius: 17px;
+}
+
+.vmnp-spinner {
+	width: 30px;
+	height: 30px;
+	border: 3px solid var(--vmnp-border);
+	border-top-color: var(--vmnp-primary);
+	border-radius: 50%;
+	animation: vmnp-spin 0.75s linear infinite;
+}
+
+.vmnp-mobile-backdrop {
+	display: none;
+}
+
+@keyframes vmnp-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes vmnp-shimmer {
+	to {
+		background-position: -200% 0;
+	}
+}
+
+@media (max-width: 1180px) {
+	.vmnp-kpi-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.vmnp-dashboard-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.vmnp-list-toolbar {
+		grid-template-columns: minmax(180px, 1fr) auto auto;
+	}
+
+	.vmnp-sort-button,
+	.vmnp-clear-button {
+		width: 100%;
+	}
+
+	.vmnp-form-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.vmnp-detail-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.vmnp-detail-field:nth-child(3n) {
+		border-right: 1px solid var(--vmnp-border);
+	}
+
+	.vmnp-detail-field:nth-child(2n) {
+		border-right: 0;
+	}
+}
+
+@media (max-width: 860px) {
+	.vmnp-root {
+		display: block;
+	}
+
+	.vmnp-sidebar {
+		position: fixed;
+		top: var(--navbar-height, 48px);
+		bottom: 0;
+		left: 0;
+		height: auto;
+		box-shadow: 16px 0 40px rgba(0, 0, 0, 0.22);
+		transform: translateX(-105%);
+	}
+
+	.vmnp-root.sidebar-open .vmnp-sidebar {
+		transform: translateX(0);
+	}
+
+	.vmnp-mobile-backdrop {
+		position: fixed;
+		inset: var(--navbar-height, 48px) 0 0;
+		z-index: 29;
+		display: block;
+		background: rgba(4, 8, 18, 0.48);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 180ms ease;
+	}
+
+	.vmnp-root.sidebar-open .vmnp-mobile-backdrop {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.vmnp-sidebar-close,
+	.vmnp-menu-button {
+		display: inline-grid !important;
+	}
+
+	.vmnp-topbar {
+		top: var(--navbar-height, 48px);
+	}
+
+	.vmnp-hero-art {
+		display: none;
+	}
+
+	.vmnp-list-toolbar {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.vmnp-list-toolbar > :first-child {
+		grid-column: 1 / -1;
+	}
+}
+
+@media (max-width: 620px) {
+	.vmnp-view {
+		padding: 14px;
+	}
+
+	.vmnp-topbar {
+		min-height: 58px;
+		padding: 8px 14px;
+	}
+
+	.vmnp-theme-switch-top {
+		width: 38px;
+		min-width: 38px;
+		padding: 0;
+	}
+
+	.vmnp-theme-switch-top [data-theme-label] {
+		display: none;
+	}
+
+	.vmnp-hero {
+		min-height: 205px;
+		padding: 25px 21px;
+		border-radius: 17px;
+	}
+
+	.vmnp-greeting {
+		margin-bottom: 14px;
+	}
+
+	.vmnp-kpi-grid,
+	.vmnp-module-grid,
+	.vmnp-form-grid,
+	.vmnp-detail-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.vmnp-dashboard-grid {
+		gap: 14px;
+	}
+
+	.vmnp-kpi-card {
+		min-height: 105px;
+	}
+
+	.vmnp-panel-head,
+	.vmnp-page-heading {
+		flex-direction: column;
+	}
+
+	.vmnp-page-heading .vmnp-primary-button,
+	.vmnp-heading-actions {
+		width: 100%;
+	}
+
+	.vmnp-heading-actions {
+		justify-content: space-between;
+	}
+
+	.vmnp-list-toolbar {
+		grid-template-columns: 1fr;
+	}
+
+	.vmnp-list-toolbar > :first-child {
+		grid-column: auto;
+	}
+
+	.vmnp-table {
+		min-width: 0;
+	}
+
+	.vmnp-table thead {
+		display: none;
+	}
+
+	.vmnp-table,
+	.vmnp-table tbody,
+	.vmnp-table tr,
+	.vmnp-table td {
+		display: block;
+		width: 100%;
+	}
+
+	.vmnp-table tbody {
+		padding: 10px;
+	}
+
+	.vmnp-table tr {
+		position: relative;
+		margin-bottom: 10px;
+		padding: 9px 42px 9px 10px;
+		background: var(--vmnp-surface-soft);
+		border: 1px solid var(--vmnp-border);
+		border-radius: 13px;
+	}
+
+	.vmnp-table td {
+		display: grid;
+		grid-template-columns: minmax(100px, 0.65fr) 1fr;
+		gap: 8px;
+		max-width: none;
+		height: auto;
+		min-height: 34px;
+		padding: 7px 6px;
+		border: 0;
+		white-space: normal;
+	}
+
+	.vmnp-table td::before {
+		color: var(--vmnp-muted);
+		font-size: 8px;
+		font-weight: 800;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		content: attr(data-label);
+	}
+
+	.vmnp-table .vmnp-row-action {
+		position: absolute;
+		top: 50%;
+		right: 12px;
+		display: block;
+		width: auto;
+		transform: translateY(-50%);
+	}
+
+	.vmnp-table .vmnp-row-action::before {
+		display: none;
+	}
+
+	.vmnp-pagination {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.vmnp-pagination > div,
+	.vmnp-pagination button {
+		width: 100%;
+	}
+
+	.vmnp-detail-field,
+	.vmnp-detail-field:nth-child(2n),
+	.vmnp-detail-field:nth-child(3n) {
+		border-right: 0;
+	}
+
+	.vmnp-form-grid {
+		padding: 18px;
+	}
+
+	.vmnp-control-slot.wide {
+		grid-column: auto;
+	}
+
+	.vmnp-form-actions {
+		flex-wrap: wrap;
+	}
+
+	.vmnp-form-actions button {
+		flex: 1;
+		min-width: 115px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vmnp-root *,
+	.vmnp-root *::before,
+	.vmnp-root *::after {
+		scroll-behavior: auto !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+.vmnp-time-input {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.vmnp-time-input .vmnp-select {
+	min-width: 0;
+	padding-right: 24px;
+}
+
+.vmnp-root .vmnp-control-slot .attach-btn,
+.vmnp-root .vmnp-control-slot .btn-attach,
+.vmnp-root .vmnp-control-slot .attached-file-link {
+	min-height: 40px;
+	color: var(--vmnp-primary);
+	background: color-mix(in srgb, var(--vmnp-primary) 7%, var(--vmnp-surface));
+	border: 1px dashed color-mix(in srgb, var(--vmnp-primary) 35%, var(--vmnp-border));
+	border-radius: 11px;
+	font-weight: 700;
+	transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+.vmnp-root .vmnp-control-slot .attach-btn:hover,
+.vmnp-root .vmnp-control-slot .btn-attach:hover {
+	background: color-mix(in srgb, var(--vmnp-primary) 12%, var(--vmnp-surface));
+	border-color: var(--vmnp-primary);
+	transform: translateY(-1px);
+}
+
+.vmnp-root .vmnp-control-slot .like-disabled-input,
+.vmnp-root .vmnp-control-slot input[readonly] {
+	color: var(--vmnp-text-soft) !important;
+	background: color-mix(in srgb, var(--vmnp-border) 32%, var(--vmnp-surface)) !important;
+	cursor: not-allowed;
+}
+
+@media (max-width: 420px) {
+	.vmnp-time-input {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Power App-style operational forms. Kept under the Vehicle Management root. */
+.vmnp-record-form.vmnp-power-canvas {
+	display: block;
+	overflow: hidden;
+	background: var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 17px;
+	box-shadow: var(--vmnp-shadow);
+}
+
+.vmnp-power-canvas .vmnp-form-section {
+	overflow: visible;
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+.vmnp-power-canvas .vmnp-form-section-head {
+	display: none;
+}
+
+.vmnp-power-canvas .vmnp-form-grid {
+	gap: 18px 24px;
+	padding: 22px 24px 2px;
+}
+
+.vmnp-power-canvas .vmnp-form-section:not(.vmnp-attachment-section) + .vmnp-form-section:not(.vmnp-attachment-section) .vmnp-form-grid {
+	padding-top: 2px;
+}
+
+.vmnp-power-canvas .vmnp-attachment-section {
+	margin-top: 22px;
+	background: color-mix(in srgb, var(--vmnp-surface-soft) 72%, var(--vmnp-surface));
+	border-top: 1px solid var(--vmnp-border);
+}
+
+.vmnp-power-canvas .vmnp-attachment-section .vmnp-form-grid {
+	padding: 20px 24px;
+}
+
+.vmnp-power-canvas .vmnp-control-slot {
+	min-width: 0;
+}
+
+.vmnp-power-canvas .vmnp-control-slot textarea.form-control,
+.vmnp-power-canvas .vmnp-control-slot textarea.vmnp-input {
+	min-height: 76px;
+	resize: vertical;
+}
+
+.vmnp-power-canvas .vmnp-form-actions {
+	position: sticky;
+	bottom: 0;
+	margin-top: 0;
+	padding: 14px 24px;
+	background: color-mix(in srgb, var(--vmnp-surface) 95%, transparent);
+	border: 0;
+	border-top: 1px solid var(--vmnp-border);
+	border-radius: 0;
+	box-shadow: none;
+	backdrop-filter: blur(12px);
+}
+
+.vmnp-power-canvas .vmnp-primary-button,
+.vmnp-power-canvas .vmnp-submit-button {
+	min-width: 145px;
+}
+
+.vmnp-power-canvas .vmnp-control-slot .frappe-control .form-group {
+	margin-bottom: 0;
+}
+
+.vmnp-power-canvas .vmnp-control-slot .date-field,
+.vmnp-power-canvas .vmnp-control-slot .time-field,
+.vmnp-power-canvas .vmnp-control-slot .datetime-field {
+	min-width: 0;
+}
+
+.vmnp-power-canvas .vmnp-control-slot .input-group {
+	width: 100%;
+}
+
+@media (max-width: 991px) {
+	.vmnp-power-canvas .vmnp-form-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.vmnp-record-form.vmnp-power-canvas {
+		border-radius: 13px;
+	}
+
+	.vmnp-power-canvas .vmnp-form-grid,
+	.vmnp-power-canvas .vmnp-attachment-section .vmnp-form-grid {
+		grid-template-columns: 1fr;
+		gap: 15px;
+		padding: 18px;
+	}
+
+	.vmnp-power-canvas .vmnp-form-actions {
+		padding: 13px 18px;
+	}
+}
+
+/* DUX Design System theme override - scoped to Vehicle Management only. */
+.vmnp-root {
+	--vmnp-primary: #5c4de6;
+	--vmnp-primary-strong: #4a3cd0;
+	--vmnp-blue: #4f9fd8;
+	--vmnp-teal: #0e9c8b;
+	--vmnp-amber: #b0741a;
+	--vmnp-danger: #c8475e;
+	--vmnp-text: #1a2030;
+	--vmnp-text-soft: #586273;
+	--vmnp-muted: #8a93a3;
+	--vmnp-bg: #f3f4f7;
+	--vmnp-surface: #ffffff;
+	--vmnp-surface-soft: #f5f6f9;
+	--vmnp-border: #e7e9ee;
+	--vmnp-border-strong: #dcdfe6;
+	--vmnp-sidebar: #ffffff;
+	--vmnp-sidebar-hover: rgba(92, 77, 230, 0.10);
+	--vmnp-shadow: 0 16px 38px rgba(26, 32, 48, 0.08);
+	--vmnp-shadow-hover: 0 18px 36px rgba(92, 77, 230, 0.16);
+	--vmnp-gradient: #5c4de6;
+	--vmnp-gradient-soft: radial-gradient(120% 64% at 50% -16%, rgba(92, 77, 230, 0.06), transparent 60%), radial-gradient(80% 50% at 88% 6%, rgba(14, 156, 139, 0.045), transparent 55%);
+}
+
+.vmnp-root[data-theme="dark"] {
+	--vmnp-primary: #6d5ef6;
+	--vmnp-primary-strong: #5b4de0;
+	--vmnp-blue: #4f9fd8;
+	--vmnp-teal: #2dd4bf;
+	--vmnp-amber: #e0a85c;
+	--vmnp-danger: #e8738a;
+	--vmnp-text: #e8eaf1;
+	--vmnp-text-soft: #9aa3b7;
+	--vmnp-muted: #5e6678;
+	--vmnp-bg: #0a0d13;
+	--vmnp-surface: #11151e;
+	--vmnp-surface-soft: #1e2433;
+	--vmnp-border: #232938;
+	--vmnp-border-strong: #2c3344;
+	--vmnp-sidebar: #11151e;
+	--vmnp-sidebar-hover: rgba(109, 94, 246, 0.14);
+	--vmnp-shadow: 0 18px 38px rgba(0, 0, 0, 0.22);
+	--vmnp-shadow-hover: 0 22px 42px rgba(0, 0, 0, 0.30);
+	--vmnp-gradient: #6d5ef6;
+	--vmnp-gradient-soft: radial-gradient(120% 70% at 50% -12%, rgba(109, 94, 246, 0.16), transparent 60%), radial-gradient(90% 60% at 88% 8%, rgba(45, 212, 191, 0.07), transparent 55%);
+}
+
+.vmnp-root .vmnp-content {
+	background: var(--vmnp-gradient-soft), var(--vmnp-bg);
+}
+
+.vmnp-root .vmnp-primary-button,
+.vmnp-root .vmnp-submit-button,
+.vmnp-root .vmnp-theme-switch,
+.vmnp-root .vmnp-brand-mark,
+.vmnp-root .vmnp-user-avatar {
+	background: var(--vmnp-gradient);
+}
+
+/* Sort toggle ab sirf A / D dikhata hai — square button, behaviour wahi. */
+.vmnp-sort-button {
+	width: 42px;
+	min-width: 42px;
+	padding: 0;
+	justify-content: center;
+	gap: 0;
+}
+
+.vmnp-sort-button span {
+	font-family: var(--vmnp-font-mono);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+/* Multi-field filter row — toolbar ke neeche, wrap hoti hui. */
+.vmnp-filter-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 9px;
+	padding: 0 16px 14px;
+	background: var(--vmnp-surface);
+	border-bottom: 1px solid var(--vmnp-border);
+}
+
+.vmnp-filter-row .vmnp-multi-filter {
+	width: auto;
+	flex: 1 1 165px;
+	min-width: 145px;
+	max-width: 235px;
+	height: 38px;
+}
+
+@media (max-width: 900px) {
+	.vmnp-filter-row .vmnp-multi-filter {
+		flex: 1 1 100%;
+		max-width: none;
+	}
+}
+
+/* Delete button — destructive, is liye danger colour. */
+.vmnp-delete-button {
+	color: var(--vmnp-danger);
+	border-color: color-mix(in srgb, var(--vmnp-danger) 30%, var(--vmnp-border));
+}
+
+.vmnp-delete-button:hover {
+	color: #fff;
+	background: var(--vmnp-danger);
+	border-color: var(--vmnp-danger);
+}
+
+/* List row colours — ID aur Link fields iris, numbers cyan, actions subtle. */
+.vmnp-table td:first-child {
+	color: var(--vmnp-primary);
+	font-weight: 500;
+}
+
+.vmnp-table td[data-fieldtype="Link"] {
+	color: var(--vmnp-primary);
+}
+
+.vmnp-table td:is(
+	[data-fieldtype="Currency"],
+	[data-fieldtype="Float"],
+	[data-fieldtype="Int"],
+	[data-fieldtype="Percent"]
+) {
+	color: var(--vmnp-teal);
+}
+
+.vmnp-row-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--vmnp-faint);
+}
+
+.vmnp-row-icon {
+	display: grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	color: var(--vmnp-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 7px;
+	cursor: pointer;
+	transition: color 140ms ease, background-color 140ms ease;
+}
+
+.vmnp-row-icon:hover {
+	color: var(--vmnp-primary);
+	background: var(--vmnp-sidebar-hover);
+}
+
+.vmnp-row-icon-danger {
+	color: var(--vmnp-danger);
+}
+
+.vmnp-row-icon-danger:hover {
+	color: var(--vmnp-danger);
+	background: color-mix(in srgb, var(--vmnp-danger) 10%, transparent);
+}
+
+/* From / To date range labels. */
+.vmnp-date-range {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	margin: 0;
+	color: var(--vmnp-muted);
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.vmnp-date-range input {
+	width: auto;
+	flex: 0 1 150px;
+	height: 38px;
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+/* Sidebar footer ka logout arrow. */
+.vmnp-logout-button {
+	display: grid;
+	place-items: center;
+	margin-left: auto;
+	width: 32px;
+	height: 32px;
+	flex: 0 0 auto;
+	padding: 0;
+	color: var(--vmnp-muted);
+	background: transparent;
+	border: 1px solid var(--vmnp-border);
+	border-radius: 9px;
+	cursor: pointer;
+	transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.vmnp-logout-button:hover {
+	color: var(--vmnp-danger);
+	border-color: color-mix(in srgb, var(--vmnp-danger) 35%, var(--vmnp-border));
+	background: color-mix(in srgb, var(--vmnp-danger) 8%, transparent);
+}
+
+/* KPI card icon tints — image 1 jaisa, har module ka apna rang. */
+.vmnp-kpi-card[data-kpi-key="vehicles"] .vmnp-kpi-icon,
+.vmnp-kpi-card[data-kpi-key="vehicle_logs"] .vmnp-kpi-icon {
+	color: var(--vmnp-primary);
+	background: color-mix(in srgb, var(--vmnp-primary) 11%, var(--vmnp-surface));
+}
+
+.vmnp-kpi-card[data-kpi-key="fuel_diesel"] .vmnp-kpi-icon {
+	color: var(--vmnp-teal);
+	background: color-mix(in srgb, var(--vmnp-teal) 12%, var(--vmnp-surface));
+}
+
+.vmnp-kpi-card[data-kpi-key="maintenance"] .vmnp-kpi-icon {
+	color: var(--vmnp-amber);
+	background: color-mix(in srgb, var(--vmnp-amber) 13%, var(--vmnp-surface));
+}
+
+.vmnp-kpi-card[data-kpi-key="rto_compliance"] .vmnp-kpi-icon {
+	color: var(--vmnp-success);
+	background: color-mix(in srgb, var(--vmnp-success) 12%, var(--vmnp-surface));
+}
+
+.vmnp-kpi-card[data-kpi-key="dg_operations"] .vmnp-kpi-icon {
+	color: var(--vmnp-blue);
+	background: color-mix(in srgb, var(--vmnp-blue) 13%, var(--vmnp-surface));
+}
+
+/* Searchable dropdown — native select chhupa rehta hai, uske upar combo box. */
+.vmnp-combo-native {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	overflow: hidden !important;
+	clip: rect(0, 0, 0, 0) !important;
+	border: 0 !important;
+}
+
+.vmnp-combo {
+	position: relative;
+}
+
+.vmnp-combo-list {
+	/* fixed — form card par overflow: hidden hai, absolute list usme kat jaati thi.
+	   Exact coords JS position_list() set karta hai. */
+	position: fixed;
+	z-index: 2000;
+	max-height: 260px;
+	margin: 0;
+	padding: 5px;
+	overflow-y: auto;
+	list-style: none;
+	background: var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border-strong);
+	border-radius: 11px;
+	box-shadow: var(--vmnp-shadow);
+}
+
+.vmnp-combo-list li {
+	padding: 8px 10px;
+	color: var(--vmnp-text);
+	border-radius: 7px;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.vmnp-combo-list li:hover {
+	background: var(--vmnp-sidebar-hover);
+}
+
+.vmnp-combo-list li.is-selected {
+	color: var(--vmnp-primary);
+	font-weight: 500;
+}
+
+.vmnp-combo-empty {
+	color: var(--vmnp-muted);
+	cursor: default;
+}
+
+.vmnp-combo-empty:hover {
+	background: transparent;
+}
+
+/* --- Hidden by request (functionality intact, sirf UI se chhupaya) --- */
+
+
+/* 2. Total Hours — Vehicle Logs aur DG Operations (form + detail). */
+[data-control-field="ld_total_hours"],
+[data-control-field="dg_total_hours"],
+.vmnp-detail-field[data-fieldname="ld_total_hours"],
+.vmnp-detail-field[data-fieldname="dg_total_hours"] {
+	display: none !important;
+}
+
+
+/* RTO expiry alert — dashboard ke sabse upar. */
+.vmnp-expiry-alert {
+	margin-bottom: 16px;
+	border: 1px solid color-mix(in srgb, var(--vmnp-amber) 35%, var(--vmnp-border));
+	overflow: hidden;
+}
+
+.vmnp-expiry-alert .vmnp-panel-header {
+	background: color-mix(in srgb, var(--vmnp-amber) 9%, var(--vmnp-surface));
+}
+
+.vmnp-expiry-alert .vmnp-panel-header > span {
+	background: color-mix(in srgb, var(--vmnp-amber) 16%, transparent);
+	color: var(--vmnp-amber);
+}
+
+.vmnp-expiry-list {
+	display: flex;
+	flex-direction: column;
+}
+
+.vmnp-expiry-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: 14px;
+	width: 100%;
+	padding: 12px 20px;
+	text-align: left;
+	background: transparent;
+	border: 0;
+	border-top: 1px solid var(--vmnp-border);
+	cursor: pointer;
+	transition: background-color 140ms ease;
+}
+
+.vmnp-expiry-row:hover {
+	background: var(--vmnp-surface-soft);
+}
+
+.vmnp-expiry-main {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.vmnp-expiry-main strong {
+	font-family: var(--vmnp-font-mono);
+	font-size: 13px;
+	color: var(--vmnp-text);
+}
+
+.vmnp-expiry-main small {
+	color: var(--vmnp-muted);
+	font-size: 12px;
+}
+
+.vmnp-expiry-date {
+	font-family: var(--vmnp-font-mono);
+	font-size: 12.5px;
+	color: var(--vmnp-text-soft);
+}
+
+.vmnp-expiry-left {
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--vmnp-amber) 12%, transparent);
+	color: var(--vmnp-amber);
+	font-size: 11.5px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.vmnp-expiry-row.critical .vmnp-expiry-left {
+	background: color-mix(in srgb, var(--vmnp-danger) 12%, transparent);
+	color: var(--vmnp-danger);
+}
+
+/* --- Sidebar + topbar redesign (Dux Portal reference). Rang wahi purane. --- */
+
+/* Brand: centered text, tile nahi. */
+.vmnp-brand {
+	flex-direction: column;
+	align-items: center;
+	gap: 3px;
+	min-height: auto;
+	padding: 16px 14px 14px;
+	text-align: center;
+}
+
+.vmnp-brand-copy {
+	align-items: center;
+	text-align: center;
+}
+
+.vmnp-brand-copy strong {
+	white-space: normal;
+	font-size: 12.5px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	text-transform: uppercase;
+}
+
+.vmnp-brand-copy span {
+	margin-top: 3px;
+	font-size: 9px;
+}
+
+/* Nav group heading + collapse chevron. */
+.vmnp-nav-group-title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	user-select: none;
+}
+
+.vmnp-nav-group-title::after {
+	content: "";
+	width: 7px;
+	height: 7px;
+	margin-right: 2px;
+	border-right: 1.5px solid currentColor;
+	border-bottom: 1.5px solid currentColor;
+	transform: rotate(45deg) translateY(-2px);
+	transition: transform 160ms ease;
+	opacity: 0.75;
+}
+
+.vmnp-nav-group.is-collapsed .vmnp-nav-group-title::after {
+	transform: rotate(-45deg) translateX(-2px);
+}
+
+.vmnp-nav-group.is-collapsed .vmnp-nav-item {
+	display: none !important;
+}
+
+/* Footer: avatar + naam + logout ek hi row me. */
+.vmnp-sidebar-footer {
+	padding: 10px 12px;
+}
+
+.vmnp-user {
+	gap: 9px;
+}
+
+.vmnp-user-avatar {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	font-size: 10.5px;
+	box-shadow: none;
+}
+
+/* Topbar: breadcrumb. */
+.vmnp-route {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.vmnp-route > span {
+	color: var(--vmnp-text-soft);
+	font-size: 12.5px;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.vmnp-route > strong {
+	font-size: 12.5px;
+	font-weight: 600;
+}
+
+.vmnp-route-sep {
+	width: 6px;
+	height: 6px;
+	border-right: 1.5px solid var(--vmnp-faint);
+	border-top: 1.5px solid var(--vmnp-faint);
+	transform: rotate(45deg);
+}
+
+/* Topbar theme toggle: sirf icon. */
+.vmnp-theme-switch-top {
+	width: 34px;
+	height: 34px;
+	min-width: 0;
+	padding: 0;
+	justify-content: center;
+	gap: 0;
+	background: transparent !important;
+	color: var(--vmnp-text-soft) !important;
+	border: 1px solid var(--vmnp-border);
+	border-radius: 10px;
+	box-shadow: none !important;
+	transform: none !important;
+}
+
+.vmnp-theme-switch-top:hover {
+	color: var(--vmnp-primary) !important;
+	border-color: var(--vmnp-primary);
+}
+
+.vmnp-theme-switch-top [data-theme-label] {
+	display: none;
+}
+
+/* Moon icon: Frappe ke sprite me "moon" hai hi nahi, is liye CSS se crescent. */
+.vmnp-theme-switch-top [data-theme-icon] {
+	display: none;
+}
+
+.vmnp-theme-switch-top::before {
+	content: "";
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	box-shadow: inset -4px 2px 0 0 currentColor;
+}
+
+.vmnp-root[data-theme="dark"] .vmnp-theme-switch-top::before {
+	box-shadow: none;
+	background: currentColor;
+}
+
+/* --- App shell: apna scroll, sticky topbar nahi ---
+   Pehle topbar sticky tha aur uska top Frappe ke --navbar-height par nirbhar
+   tha. Navbar hide karte hi offsets aur compositing bigad jaate the aur content
+   topbar ke upar chad jaata tha. Ab topbar flex ka pehla row hai aur scroll
+   content ke andar hota hai — navbar-height se koi rishta nahi bachta. */
+
+body.vmnp-portal-active header.navbar,
+body.vmnp-portal-active > nav.navbar,
+body.vmnp-portal-active .desk-navbar {
+	display: none !important;
+}
+
+body.vmnp-portal-active {
+	--navbar-height: 0px;
+	overflow: hidden;
+}
+
+body.vmnp-portal-active .vmnp-root {
+	height: 100vh;
+	min-height: 0;
+	overflow: hidden;
+}
+
+body.vmnp-portal-active .vmnp-sidebar {
+	position: static;
+	height: 100%;
+}
+
+body.vmnp-portal-active .vmnp-main {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	height: 100%;
+}
+
+body.vmnp-portal-active .vmnp-topbar {
+	position: static;
+	flex: 0 0 auto;
+}
+
+body.vmnp-portal-active .vmnp-view {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+/* --- List tweaks (request) --- */
+
+/* 1. D / A sort toggle hide. */
+.vmnp-sort-button {
+	display: none !important;
+}
+
+/* 2. Page heading se doctype eyebrow aur description hataye.
+      Dashboard ka hero waise ka waisa rehta hai. */
+.vmnp-page-heading .vmnp-eyebrow,
+.vmnp-page-heading > div > p {
+	display: none !important;
+}
+
+/* 4. List responsive: poore shabd dikhein, ellipsis nahi, aur horizontal
+      scroll ki zaroorat na pade. */
+.vmnp-table-wrap {
+	overflow-x: visible;
+}
+
+.vmnp-table {
+	width: 100%;
+	table-layout: auto;
+}
+
+.vmnp-table th {
+	white-space: normal;
+	word-break: break-word;
+}
+
+.vmnp-table td {
+	max-width: none;
+	height: auto;
+	min-height: 57px;
+	overflow: visible;
+	white-space: normal;
+	word-break: break-word;
+	text-overflow: clip;
+}
+
+/* Action column hamesha dikhe, kabhi kate nahi. */
+.vmnp-table td.vmnp-row-action {
+	width: 1%;
+	white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+	.vmnp-table th,
+	.vmnp-table td {
+		padding: 9px 10px;
+		font-size: 12px;
+	}
+}
+
+/* Searchable dropdown: band halat me select jaisa box, khulne par panel. */
+.vmnp-combo-display {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	width: 100%;
+	height: 42px;
+	padding: 0 12px;
+	color: var(--vmnp-text);
+	background: var(--vmnp-surface-soft);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 11px;
+	font-size: 13px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.vmnp-combo.is-open .vmnp-combo-display {
+	border-color: var(--vmnp-primary);
+	box-shadow: 0 0 0 3px rgba(92, 77, 230, 0.13);
+}
+
+.vmnp-combo-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vmnp-combo-text.is-placeholder {
+	color: var(--vmnp-muted);
+}
+
+.vmnp-combo-caret {
+	flex: 0 0 auto;
+	width: 7px;
+	height: 7px;
+	border-right: 1.5px solid var(--vmnp-muted);
+	border-bottom: 1.5px solid var(--vmnp-muted);
+	transform: rotate(45deg) translateY(-2px);
+}
+
+.vmnp-combo-panel {
+	z-index: 2000;
+	max-height: 300px;
+	display: flex;
+	flex-direction: column;
+	padding: 8px;
+	overflow: hidden;
+	background: var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border-strong);
+	border-radius: 12px;
+	box-shadow: var(--vmnp-shadow);
+}
+
+.vmnp-combo-search {
+	width: 100%;
+	height: 36px;
+	flex: 0 0 auto;
+	padding: 0 10px;
+	margin-bottom: 6px;
+	color: var(--vmnp-text);
+	background: var(--vmnp-surface-soft);
+	border: 1px solid var(--vmnp-border);
+	border-radius: 9px;
+	font-size: 13px;
+	outline: none;
+}
+
+.vmnp-combo-search:focus {
+	border-color: var(--vmnp-primary);
+}
+
+.vmnp-combo-panel .vmnp-combo-list {
+	position: static;
+	flex: 1 1 auto;
+	max-height: none;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	list-style: none;
+}

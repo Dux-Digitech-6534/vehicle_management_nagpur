@@ -1,0 +1,231 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:RTO - {##}",
+ "creation": "2025-11-05 16:42:29.190176",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "small_text_wuti",
+  "section_break_hfbk",
+  "rto_date",
+  "rto_vehicle_name",
+  "rto_supervisor_name",
+  "column_break_wvzx",
+  "rto_type_of_vehicle",
+  "rto_vehicle_location",
+  "column_break_xucw",
+  "rto_vehicle_number",
+  "rto_select_campus",
+  "section_break_fvbx",
+  "document_type",
+  "expired_date",
+  "column_break_trrf",
+  "trust_name",
+  "amount",
+  "column_break_pjvn",
+  "issued_date",
+  "attachment",
+  "section_break_mgbk",
+  "remarkl",
+  "amended_from",
+  "workflow_state"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_hfbk",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Details"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "RTO Details VMN",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Approval Status",
+   "options": "Draft\nPending\nApproved\nRejected\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_wvzx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xucw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "rto_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rto_type_of_vehicle",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type of Vehicle",
+   "options": "BUS",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rto_vehicle_number",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vehicle Number",
+   "options": "Vehicle Details VMN",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "rto_vehicle_number.vd_vehicle_name",
+   "fieldname": "rto_vehicle_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Vehicle Name"
+  },
+  {
+   "fetch_from": "rto_vehicle_number.vd_location",
+   "fieldname": "rto_vehicle_location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vehicle Location"
+  },
+  {
+   "fieldname": "section_break_mgbk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "remarkl",
+   "fieldtype": "Small Text",
+   "label": "Remark"
+  },
+  {
+   "fetch_from": "rto_select_campus.supervisor_name",
+   "fieldname": "rto_supervisor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Supervisor Name"
+  },
+  {
+   "fieldname": "rto_select_campus",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Select Campus",
+   "options": "Campus Details VMN"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state == 'Rejected'",
+   "fieldname": "small_text_wuti",
+   "fieldtype": "Small Text",
+   "label": "Reject Remark"
+  },
+  {
+   "fieldname": "section_break_fvbx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Select",
+   "label": "Document Type",
+   "options": "\nPUC\nFitness\nPermit\nInsurance\nSpecial Permit\nRTO Tax\nRC\nProfessional Tax\nRadium Cert.\nOther"
+  },
+  {
+   "fieldname": "trust_name",
+   "fieldtype": "Link",
+   "label": "Trust Name",
+   "options": "Trust Name VMN"
+  },
+  {
+   "fieldname": "expired_date",
+   "fieldtype": "Date",
+   "label": "Expired Date"
+  },
+  {
+   "fieldname": "column_break_trrf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
+  },
+  {
+   "fieldname": "column_break_pjvn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "issued_date",
+   "fieldtype": "Date",
+   "label": "Issued Date"
+  },
+  {
+   "fieldname": "attachment",
+   "fieldtype": "Attach Image",
+   "label": "Attachment"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-03 15:34:54.232811",
+ "modified_by": "ritesh.sharma@duxdigitech.com",
+ "module": "Vehicle Management Nagpur",
+ "name": "RTO Details VMN",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

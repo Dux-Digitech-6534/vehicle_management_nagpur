@@ -1,0 +1,176 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"EJOrWKTVbt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Dux Vehicle Management Nagpur</span>\",\"col\":12}},{\"id\":\"AH5e2YSMVu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vehicle Mangement Nagpur\",\"col\":3}},{\"id\":\"SD6aqgkNUj\",\"type\":\"card\",\"data\":{\"card_name\":\"Add Vehicle Details\",\"col\":6}},{\"id\":\"QVfgC6dqY8\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"LJcSXAZZLG\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":6}},{\"id\":\"8_hoAXNwiM\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
+ "creation": "2025-11-11 12:56:20.731949",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "grid",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Dux Vehicle Management Nagpur",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 7,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Campus Details List",
+   "link_count": 0,
+   "link_to": "Campus Details VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "User Details List",
+   "link_count": 0,
+   "link_to": "User Details VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vehicle Details List ",
+   "link_count": 0,
+   "link_to": "Vehicle Details VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Diesel Generator Information List ",
+   "link_count": 0,
+   "link_to": "Diesel Generator Information VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Trust Name List",
+   "link_count": 0,
+   "link_to": "Trust Name VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Supervisor at Campus List",
+   "link_count": 0,
+   "link_to": "Supervisor for Campus VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "DG Location at Campus List",
+   "link_count": 0,
+   "link_to": "DG Location At Campus VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add Vehicle Details",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Log Details List",
+   "link_count": 0,
+   "link_to": "Log Details VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Diesel Details List",
+   "link_count": 0,
+   "link_to": "Diesel Details VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Maintenance Details List",
+   "link_count": 0,
+   "link_to": "Maintenance Details VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "RTO Details List",
+   "link_count": 0,
+   "link_to": "RTO Details VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "DG Details List",
+   "link_count": 0,
+   "link_to": "DG Details VMN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-08-07 12:07:57.802048",
+ "modified_by": "sahupoojashree9@gmail.com",
+ "module": "Vehicle Management Nagpur",
+ "name": "Dux Vehicle Management Nagpur",
+ "number_cards": [],
+ "owner": "shubhangi.pawar@duxdigitech.com",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 44.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Vehicle Mangement Nagpur",
+   "link_to": "vehicle-management",
+   "type": "Page"
+  }
+ ],
+ "title": "Dux Vehicle Management Nagpur"
+}

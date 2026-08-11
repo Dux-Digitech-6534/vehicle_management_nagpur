@@ -1,0 +1,104 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-08 15:41:50.989975",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "vrd_vehicle_document",
+  "vrd_document_type",
+  "vrd_issue_date",
+  "vrd_expiry_date",
+  "vrd_amount",
+  "vrd_attachemts",
+  "trust_name",
+  "reminder_15",
+  "reminder_10",
+  "reminder_5",
+  "user_email"
+ ],
+ "fields": [
+  {
+   "fieldname": "vrd_vehicle_document",
+   "fieldtype": "Link",
+   "label": "Vehicle Number",
+   "options": "Vehicle Details VMN"
+  },
+  {
+   "fieldname": "vrd_document_type",
+   "fieldtype": "Select",
+   "label": "Document Type",
+   "options": "\nPUC\nFitness\nPermit\nInsurance\nRTO Tax\nSpecial Permit\nRC\nProfessional Tax\nRadium Cert.\nOther"
+  },
+  {
+   "fieldname": "vrd_issue_date",
+   "fieldtype": "Date",
+   "label": "Issue Date"
+  },
+  {
+   "fieldname": "vrd_expiry_date",
+   "fieldtype": "Date",
+   "label": "Expiry Date"
+  },
+  {
+   "fieldname": "vrd_amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
+  },
+  {
+   "fieldname": "vrd_attachemts",
+   "fieldtype": "Attach",
+   "label": "Attachemts"
+  },
+  {
+   "fieldname": "trust_name",
+   "fieldtype": "Link",
+   "label": "Trust Name",
+   "options": "Trust Name VMN"
+  },
+  {
+   "default": "0",
+   "fieldname": "reminder_15",
+   "fieldtype": "Check",
+   "label": "15 Days Reminder Sent",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "reminder_10",
+   "fieldtype": "Check",
+   "label": "10 Days Reminder Sent",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "reminder_5",
+   "fieldtype": "Check",
+   "label": "5 Days Reminder Sent",
+   "read_only": 1
+  },
+  {
+   "default": "\n",
+   "fieldname": "user_email",
+   "fieldtype": "Data",
+   "label": "User Email",
+   "options": "Email\n",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-17 13:31:02.225813",
+ "modified_by": "ritesh.sharma@duxdigitech.com",
+ "module": "Vehicle Management Nagpur",
+ "name": "Vehicle RTO Document VMN",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,250 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:DD - {##}",
+ "creation": "2025-11-05 16:33:38.229547",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "small_text_iaso",
+  "section_break_fdld",
+  "dd_date",
+  "dd_vehicle_name",
+  "column_break_yhgg",
+  "dd_type_of_vehicle",
+  "dd_vehicle_location",
+  "column_break_sdcf",
+  "dd_vehicle_number",
+  "dd_select_campus",
+  "fuel_details_section",
+  "dd_quantity",
+  "dd_last_quantity",
+  "dd_fuel_station_name",
+  "column_break_lbbm",
+  "dd_rate",
+  "column_break_ogst",
+  "dd_amount",
+  "attachment_section",
+  "dd_fuel_fill_up_reading",
+  "dd_average",
+  "column_break_qoyw",
+  "dd_previous_fuel_fill_up_reading",
+  "column_break_btdw",
+  "dd_odometer_reading",
+  "section_break_bqag",
+  "dd_remark",
+  "amended_from",
+  "workflow_state"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_fdld",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Details"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Diesel Details VMN",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Approval Status",
+   "options": "Draft\nPending\nApproved\nRejected\nCancelled",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "dd_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dd_type_of_vehicle",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type of Vehicle",
+   "options": "BUS",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dd_vehicle_number",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vehicle Number",
+   "options": "Vehicle Details VMN",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "dd_vehicle_number.vd_vehicle_name",
+   "fieldname": "dd_vehicle_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Vehicle Name"
+  },
+  {
+   "fieldname": "column_break_yhgg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fuel_details_section",
+   "fieldtype": "Section Break",
+   "label": "Fuel Details"
+  },
+  {
+   "fieldname": "dd_quantity",
+   "fieldtype": "Float",
+   "label": "Quantity",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "dd_rate",
+   "fieldtype": "Currency",
+   "label": "Rate (₹/Ltr)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dd_amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dd_average",
+   "fieldtype": "Data",
+   "label": "Average",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dd_fuel_station_name",
+   "fieldtype": "Link",
+   "label": "Fuel Station / Vendor  Name",
+   "options": "Fuel Station VMN",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_lbbm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_bqag",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "dd_remark",
+   "fieldtype": "Small Text",
+   "label": "Remark"
+  },
+  {
+   "fieldname": "attachment_section",
+   "fieldtype": "Section Break",
+   "label": "Odometer Reading"
+  },
+  {
+   "fieldname": "dd_odometer_reading",
+   "fieldtype": "Attach Image",
+   "label": "Odometer Reading"
+  },
+  {
+   "fieldname": "dd_fuel_fill_up_reading",
+   "fieldtype": "Int",
+   "label": "Fuel Fill up Reading",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dd_previous_fuel_fill_up_reading",
+   "fieldtype": "Int",
+   "label": "Previous Fuel Fill up Reading",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_qoyw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_sdcf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ogst",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_btdw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dd_select_campus",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Select Campus",
+   "options": "Campus Details VMN",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "dd_vehicle_number.vd_location",
+   "fieldname": "dd_vehicle_location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vehicle Location"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state == 'Rejected'",
+   "fieldname": "small_text_iaso",
+   "fieldtype": "Small Text",
+   "label": "Reject Remark"
+  },
+  {
+   "fieldname": "dd_last_quantity",
+   "fieldtype": "Float",
+   "label": "Last Quantity",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-03 09:56:57.331230",
+ "modified_by": "ritesh.sharma@duxdigitech.com",
+ "module": "Vehicle Management Nagpur",
+ "name": "Diesel Details VMN",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,73 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:GI-{##}",
+ "creation": "2025-11-05 17:15:04.923172",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "diesel_generator_location",
+  "type_of_diesel_generator",
+  "column_break_okmb",
+  "diesel_generator_campus",
+  "diesel_generator_number"
+ ],
+ "fields": [
+  {
+   "fieldname": "type_of_diesel_generator",
+   "fieldtype": "Select",
+   "label": "Type of Diesel Generator",
+   "options": "Inverter DG"
+  },
+  {
+   "fieldname": "diesel_generator_number",
+   "fieldtype": "Data",
+   "label": "Diesel Generator Number"
+  },
+  {
+   "fieldname": "diesel_generator_location",
+   "fieldtype": "Link",
+   "label": "Diesel Generator Campus",
+   "options": "Campus Details VMN"
+  },
+  {
+   "fieldname": "diesel_generator_campus",
+   "fieldtype": "Link",
+   "label": "Diesel Generator Location",
+   "options": "Campus Details VMN"
+  },
+  {
+   "fieldname": "column_break_okmb",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-08 12:27:16.684472",
+ "modified_by": "sahupoojashree9@gmail.com",
+ "module": "Vehicle Management Nagpur",
+ "name": "Diesel Generator Information VMN",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "diesel_generator_campus"
+}
