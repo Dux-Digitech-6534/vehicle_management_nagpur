@@ -22,10 +22,11 @@
   "md_invoice_attacment",
   "column_break_cvjj",
   "md_invoice_number",
-  "md_work_details",
   "column_break_daab",
   "md_total_repairingamount",
   "section_break_zvol",
+  "md_work_details",
+  "md_work_details_table",
   "md_remark",
   "amended_from",
   "workflow_state"
@@ -168,14 +169,20 @@
    "fieldtype": "Small Text",
    "label": "Work Details",
    "read_only": 1
+  },
+  {
+   "fieldname": "md_work_details_table",
+   "fieldtype": "Table",
+   "label": "Work Details Table",
+   "options": "Maintenance Work Detail VMN"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-03 15:34:05.617655",
- "modified_by": "ritesh.sharma@duxdigitech.com",
+ "modified": "2026-08-12 14:57:32.843314",
+ "modified_by": "sahupoojashree9@gmail.com",
  "module": "Vehicle Management Nagpur",
  "name": "Maintenance Details VMN",
  "naming_rule": "Expression",

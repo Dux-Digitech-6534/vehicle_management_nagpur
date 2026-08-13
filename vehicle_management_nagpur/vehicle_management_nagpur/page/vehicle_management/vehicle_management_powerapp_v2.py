@@ -127,6 +127,53 @@ def get_dg_details(dg_information, dg_campus=None):
     return frappe.db.get_value("Diesel Generator Information VMN", info_name, fields, as_dict=True) or {}
 
 
+def _apply_maintenance_work_details(doc, values):
+    """Persist Maintenance Work Details on first save and edit save."""
+    if doc.doctype != "Maintenance Details VMN":
+        return
+
+    raw_rows = values.get("md_work_details_table")
+    if raw_rows in (None, ""):
+        raw_rows = values.get("md_work_details")
+
+    rows = []
+    if raw_rows not in (None, ""):
+        try:
+            rows = frappe.parse_json(raw_rows) if isinstance(raw_rows, str) else raw_rows
+        except Exception:
+            rows = []
+    if not isinstance(rows, list):
+        rows = []
+
+    cleaned_rows = []
+    total = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        repair_work = cstr(
+            row.get("mwd_repair_work")
+            or row.get("name_of_repair_work")
+            or row.get("repair_work")
+            or row.get("work")
+        ).strip()
+        amount = flt(row.get("mwd_amount") if row.get("mwd_amount") is not None else row.get("amount"))
+        if not repair_work and not amount:
+            continue
+        cleaned_rows.append({"mwd_repair_work": repair_work, "mwd_amount": amount})
+        total += amount
+
+    if raw_rows not in (None, ""):
+        doc.set("md_work_details_table", [])
+        for row in cleaned_rows:
+            doc.append("md_work_details_table", row)
+        doc.set("md_work_details", frappe.as_json(cleaned_rows))
+
+    if raw_rows not in (None, ""):
+        doc.set("md_total_repairingamount", total)
+    elif values.get("md_total_repairingamount") not in (None, ""):
+        doc.set("md_total_repairingamount", flt(values.get("md_total_repairingamount")))
+
+
 @frappe.whitelist()
 def save_document(key, values, name=None, submit=0):
     config = base._get_config(key)
@@ -153,6 +200,7 @@ def save_document(key, values, name=None, submit=0):
             doc.set(fieldname, value)
 
     _apply_power_app_calculations(doc)
+    _apply_maintenance_work_details(doc, values)
     if base._uses_approval(config):
         base._ensure_approval_state(doc)
     doc.save()

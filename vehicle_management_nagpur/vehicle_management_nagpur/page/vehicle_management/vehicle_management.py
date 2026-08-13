@@ -24,23 +24,33 @@ LAYOUT_FIELD_TYPES = {
 SEARCHABLE_FIELD_TYPES = {"Data", "Link", "Dynamic Link", "Select", "Small Text", "Text"}
 
 APPROVAL_STATE_FIELD = "workflow_state"
-APPROVAL_STATES = {"Draft", "Pending", "Approved"}
-APPROVAL_DOCTYPES = {
-    "Log Details VMN",
-    "Diesel Details VMN",
-    "Maintenance Details VMN",
-    "RTO Details VMN",
-    "DG Details VMN",
-}
+
+
+def _workflow_name(doctype):
+    if not doctype:
+        return None
+    return frappe.db.get_value("Workflow", {"document_type": doctype, "is_active": 1}, "name")
+
+
+def _workflow_doc(doctype):
+    name = _workflow_name(doctype)
+    return frappe.get_cached_doc("Workflow", name) if name else None
+
+
+def _workflow_state_field(doctype):
+    workflow = _workflow_doc(doctype)
+    return cstr(getattr(workflow, "workflow_state_field", None) or APPROVAL_STATE_FIELD)
 
 
 def _uses_approval(config):
-    return config.get("doctype") in APPROVAL_DOCTYPES
+    # Dynamic: approval is enabled only when an active Frappe Workflow exists for the DocType.
+    return bool(_workflow_name(config.get("doctype")))
 
 
 def _approval_state(doc):
-    state = cstr(doc.get(APPROVAL_STATE_FIELD)).strip()
-    if state in APPROVAL_STATES:
+    fieldname = _workflow_state_field(doc.doctype)
+    state = cstr(doc.get(fieldname)).strip()
+    if state:
         return state
     if cint(doc.get("docstatus")) == 1:
         return "Approved"
@@ -48,10 +58,21 @@ def _approval_state(doc):
 
 
 def _ensure_approval_state(doc):
-    if not doc.meta.has_field(APPROVAL_STATE_FIELD):
+    fieldname = _workflow_state_field(doc.doctype)
+    if not doc.meta.has_field(fieldname):
         return
-    if not cstr(doc.get(APPROVAL_STATE_FIELD)).strip():
-        doc.set(APPROVAL_STATE_FIELD, "Approved" if cint(doc.docstatus) == 1 else "Draft")
+    if cstr(doc.get(fieldname)).strip():
+        return
+    workflow = _workflow_doc(doc.doctype)
+    default_state = None
+    if workflow:
+        for row in workflow.states or []:
+            if cint(row.doc_status) == cint(doc.docstatus):
+                default_state = row.state
+                break
+        if not default_state and workflow.states:
+            default_state = workflow.states[0].state
+    doc.set(fieldname, default_state or ("Approved" if cint(doc.docstatus) == 1 else "Draft"))
 
 
 def _apply_approval_state(config, row):
@@ -60,46 +81,88 @@ def _apply_approval_state(config, row):
     return row
 
 
-def _is_vehicle_approval_user():
-    user = frappe.session.user
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+def _user_has_workflow_role(allowed):
+    allowed = cstr(allowed).strip()
+    if not allowed or allowed == "All":
         return True
-    try:
-        meta = frappe.get_meta("User Details VMN")
-    except Exception:
+    user = frappe.session.user
+    if allowed in frappe.get_roles(user):
+        return True
+    return bool(
+        frappe.db.exists(
+            "Has Role",
+            {"parent": user, "parenttype": "User", "role": allowed},
+        )
+    )
+
+
+def _workflow_transitions_for_user(config, doc):
+    if not _uses_approval(config):
+        return []
+    workflow = _workflow_doc(config.get("doctype"))
+    if not workflow:
+        return []
+    state = _approval_state(doc)
+    transitions = []
+    for row in workflow.transitions or []:
+        if cstr(row.state) == state and _user_has_workflow_role(row.allowed):
+            transitions.append(row)
+    return transitions
+
+
+def _workflow_docstatus_for_state(config, state):
+    workflow = _workflow_doc(config.get("doctype"))
+    if not workflow:
+        return None
+    state = cstr(state)
+    for row in workflow.states or []:
+        if cstr(row.state) == state:
+            return cint(row.doc_status)
+    return None
+
+
+def _is_approve_transition(config, transition):
+    action = cstr(transition.action).strip().lower()
+    return action == "approve" or _workflow_docstatus_for_state(config, transition.next_state) == 1
+
+
+def _is_request_approval_transition(config, transition):
+    action = cstr(transition.action).strip().lower()
+    if action in {"approve", "reject", "cancel"}:
         return False
-    user_fields = [
-        fieldname
-        for fieldname in ("ud_user_email", "ud_user_name", "ud_personal_email")
-        if meta.has_field(fieldname)
+    return cint(_workflow_docstatus_for_state(config, transition.next_state) or 0) == 0
+
+
+def _workflow_transition_payloads(config, doc):
+    return [
+        {
+            "state": row.state,
+            "action": row.action,
+            "next_state": row.next_state,
+            "allowed": row.allowed,
+        }
+        for row in _workflow_transitions_for_user(config, doc)
     ]
-    for fieldname in user_fields:
-        if frappe.db.exists("User Details VMN", {fieldname: user, "ud_user_type": "Approve"}):
-            return True
-    return False
 
 
 def _can_approve(config, doc):
-    if not _uses_approval(config) or doc.docstatus != 0 or _approval_state(doc) != "Pending":
-        return False
-    return bool(_is_vehicle_approval_user())
+    # Dynamic: current user can approve when active Workflow has an allowed approve/submitted transition.
+    return any(_is_approve_transition(config, row) for row in _workflow_transitions_for_user(config, doc))
 
 
 def _can_request_approval(config, doc):
-    return bool(
-        _uses_approval(config)
-        and doc.docstatus == 0
-        and _approval_state(doc) == "Draft"
-        and doc.has_permission("write")
-    )
+    # Dynamic: current user can request approval when active Workflow has an allowed draft/resubmit transition.
+    if not doc.has_permission("write"):
+        return False
+    return any(_is_request_approval_transition(config, row) for row in _workflow_transitions_for_user(config, doc))
 
 
 def _can_edit_document(config, doc):
-    return bool(
-        doc.docstatus == 0
-        and (not _uses_approval(config) or _approval_state(doc) == "Draft")
-        and doc.has_permission("write")
-    )
+    if cint(doc.docstatus) != 0 or not doc.has_permission("write"):
+        return False
+    if _uses_approval(config) and _approval_state(doc) == "Pending":
+        return False
+    return True
 
 
 DOCUMENT_CONFIG = {
@@ -620,7 +683,7 @@ def get_document_list(
 
     start = max(0, cint(start))
     page_length = min(MAX_PAGE_LENGTH, max(1, cint(page_length) or 20))
-    sort_by = cstr(sort_by) if cstr(sort_by) in allowed_sort_fields else (config.get("date_field") or "modified")
+    sort_by = cstr(sort_by) if cstr(sort_by) in allowed_sort_fields else "creation"
     sort_order = "asc" if cstr(sort_order).lower() == "asc" else "desc"
     filters = []
     or_filters = []
@@ -636,13 +699,11 @@ def get_document_list(
         for fieldname in _search_fieldnames(config, meta):
             or_filters.append([config["doctype"], fieldname, "like", f"%{search}%"])
 
-    if key == "vehicle_logs" and sort_by == config.get("date_field"):
-        order_by = f"`tab{config['doctype']}`.`creation` desc"
-    else:
-        order_by = (
-            f"`tab{config['doctype']}`.`{sort_by}` {sort_order}, "
-            f"`tab{config['doctype']}`.`creation` {sort_order}"
-        )
+    order_by = (
+        f"`tab{config['doctype']}`.`{sort_by}` {sort_order}, "
+        f"`tab{config['doctype']}`.`creation` {sort_order}, "
+        f"`tab{config['doctype']}`.`name` {sort_order}"
+    )
 
     query_fields = list(dict.fromkeys(list_fields + ["docstatus"]))
     rows = frappe.get_list(
@@ -687,6 +748,13 @@ def get_document(key, name):
     # VMNP maintenance work details persist 2026-08-10
     if key == "maintenance":
         values["md_work_details"] = doc.get("md_work_details")
+        values["md_work_details_table"] = [
+            {
+                "mwd_repair_work": row.get("mwd_repair_work"),
+                "mwd_amount": row.get("mwd_amount"),
+            }
+            for row in (doc.get("md_work_details_table") or [])
+        ]
 
     approval_state = _approval_state(doc) if _uses_approval(config) else ""
     if approval_state and _field_exists(meta, APPROVAL_STATE_FIELD):
@@ -705,6 +773,7 @@ def get_document(key, name):
         "can_edit": _can_edit_document(config, doc),
         "can_request_approval": _can_request_approval(config, doc),
         "can_approve": _can_approve(config, doc),
+        "workflow_transitions": _workflow_transition_payloads(config, doc),
     }
 
 
@@ -725,12 +794,19 @@ def get_document_form(key, name=None):
     # VMNP maintenance work details persist 2026-08-10
     if key == "maintenance":
         values["md_work_details"] = doc.get("md_work_details")
+        values["md_work_details_table"] = [
+            {
+                "mwd_repair_work": row.get("mwd_repair_work"),
+                "mwd_amount": row.get("mwd_amount"),
+            }
+            for row in (doc.get("md_work_details_table") or [])
+        ]
 
     approval_state = _approval_state(doc) if _uses_approval(config) else ""
     if approval_state and _field_exists(meta, APPROVAL_STATE_FIELD):
         values[APPROVAL_STATE_FIELD] = approval_state
 
-    can_save = frappe.has_permission(config["doctype"], ptype="create") if is_new else doc.has_permission("write")
+    can_save = frappe.has_permission(config["doctype"], ptype="create") if is_new else _can_edit_document(config, doc)
     can_submit = bool(
         meta.is_submittable
         and doc.docstatus == 0
@@ -748,10 +824,11 @@ def get_document_form(key, name=None):
         "approval_state": approval_state,
         "sections": sections,
         "values": values,
-        "can_save": bool(can_save and doc.docstatus == 0 and (not _uses_approval(config) or approval_state == "Draft")),
+        "can_save": bool(can_save),
         "can_submit": can_submit,
         "can_request_approval": bool(not is_new and _can_request_approval(config, doc)),
         "can_approve": bool(not is_new and _can_approve(config, doc)),
+        "workflow_transitions": [] if is_new else _workflow_transition_payloads(config, doc),
     }
 
 
@@ -768,8 +845,8 @@ def save_document(key, values, name=None, submit=0):
     else:
         doc = frappe.get_doc(config["doctype"], cstr(name))
         _check_permission(config, "write", doc=doc)
-        if doc.docstatus != 0:
-            frappe.throw(_("Only draft records can be edited in the portal."))
+        if not _can_edit_document(config, doc):
+            frappe.throw(_("You cannot edit this record in its current workflow state."))
 
     writable_fields = {
         df.fieldname

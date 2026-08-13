@@ -598,7 +598,7 @@
 }
 
 .vmnp-hero h1 span {
-	background: var(--vmnp-gradient);
+	background: linear-gradient(90deg, #5c4de6 0%, #4f9fd8 55%, #0e9c8b 100%);
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
@@ -665,7 +665,7 @@
 	width: 82px;
 	height: 82px;
 	color: #fff;
-	background: var(--vmnp-gradient);
+	background: linear-gradient(90deg, #5c4de6 0%, #4f9fd8 55%, #0e9c8b 100%);
 	border-radius: 25px;
 	font-size: 25px;
 	font-weight: 900;

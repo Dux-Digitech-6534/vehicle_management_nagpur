@@ -688,22 +688,23 @@ class VehicleManagementPortal {
 
 	/* VMNP maintenance base detail render 2026-08-10 */
 	maintenance_work_details_section(data) {
-		const raw = data?.values?.md_work_details || "";
-		let rows = [];
-		try {
-			const parsed = JSON.parse(String(raw || "[]"));
-			if (Array.isArray(parsed)) {
-				rows = parsed
-					.map((row) => ({
-						work: String(row?.work || row?.name_of_repair_work || "").trim(),
-						amount: Number(row?.amount || 0) || 0,
-					}))
-					.filter((row) => row.work || row.amount);
+		const normalize = (row) => ({
+			work: String(row?.mwd_repair_work || row?.work || row?.name_of_repair_work || row?.repair_work || "").trim(),
+			amount: Number(row?.mwd_amount || row?.amount || row?.repair_amount || 0) || 0,
+		});
+		const parse = (raw) => {
+			if (!raw) return [];
+			if (Array.isArray(raw)) return raw.map(normalize).filter((row) => row.work || row.amount);
+			try {
+				const parsed = JSON.parse(String(raw || "[]"));
+				return Array.isArray(parsed) ? parsed.map(normalize).filter((row) => row.work || row.amount) : [];
+			} catch (error) {
+				return [];
 			}
-		} catch (error) {
-			rows = [];
-		}
-		const total = rows.reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		};
+		let rows = parse(data?.values?.md_work_details_table);
+		if (!rows.length) rows = parse(data?.values?.md_work_details);
+		const total = rows.reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 		const money = (value) =>
 			new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(
 				Number(value || 0) || 0
@@ -6564,7 +6565,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		try {
 			const parsed = JSON.parse(String(raw));
 			return Array.isArray(parsed)
-				? parsed.map((row) => ({ work: String(row.work || row.name_of_repair_work || ""), amount: Number(row.amount || 0) || 0 }))
+				? parsed.map((row) => ({ work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || ""), amount: Number(row.mwd_amount || row.amount || 0) || 0 }))
 				: [];
 		} catch (error) {
 			return [];
@@ -6574,7 +6575,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	function rows_json(rows) {
 		return JSON.stringify((rows || []).filter((row) => row.work || row.amount).map((row) => ({
 			work: String(row.work || "").trim(),
-			amount: Number(row.amount || 0) || 0,
+			amount: Number(row.mwd_amount || row.amount || 0) || 0,
 		})));
 	}
 
@@ -6607,14 +6608,14 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		portal._vmnp_maintenance_work_rows = rows || [];
 		portal._vmnp_maintenance_work_json = rows_json(portal._vmnp_maintenance_work_rows);
 		if (portal.controls?.[WORK_FIELD]?.set_value) portal.controls[WORK_FIELD].set_value(portal._vmnp_maintenance_work_json);
-		const total = portal._vmnp_maintenance_work_rows.reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		const total = portal._vmnp_maintenance_work_rows.reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 		if (portal.controls?.[TOTAL_FIELD]?.set_value) portal.controls[TOTAL_FIELD].set_value(total || "");
 		render_summary(portal);
 	}
 
 	function render_summary(portal) {
 		const rows = read_rows(portal);
-		const total = rows.reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		const total = rows.reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 		const $summary = portal.$view.find("[data-md-work-summary]");
 		if (!$summary.length) return;
 		if (!rows.length) {
@@ -6675,7 +6676,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 				set_rows(portal, collect_dialog_rows($wrap));
 				const payload = {
 					json: portal._vmnp_maintenance_work_json || rows_json(portal._vmnp_maintenance_work_rows || []),
-					total: (portal._vmnp_maintenance_work_rows || []).reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0),
+					total: (portal._vmnp_maintenance_work_rows || []).reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0),
 				};
 				const record_name = portal.current_view && portal.current_view.type === "form" ? portal.current_view.name : "";
 				if (record_name) {
@@ -7250,7 +7251,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		try {
 			const parsed = JSON.parse(String(raw));
 			return Array.isArray(parsed)
-				? parsed.map((row) => ({ work: String(row.work || row.name_of_repair_work || ""), amount: Number(row.amount || 0) || 0 })).filter((row) => row.work || row.amount)
+				? parsed.map((row) => ({ work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || ""), amount: Number(row.mwd_amount || row.amount || 0) || 0 })).filter((row) => row.work || row.amount)
 				: [];
 		} catch (error) {
 			return [];
@@ -7258,7 +7259,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	}
 
 	function rows_total(rows) {
-		return (rows || []).reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		return (rows || []).reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 	}
 
 	function money(value) {
@@ -7324,9 +7325,9 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	function work_payload(portal) {
 		const rows = portal._vmnp_maintenance_work_rows || parse_rows(portal._vmnp_maintenance_work_json || portal.controls?.md_work_details?.get_value?.());
 		const clean_rows = rows
-			.map((row) => ({ work: String(row.work || row.name_of_repair_work || "").trim(), amount: Number(row.amount || 0) || 0 }))
+			.map((row) => ({ work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || "").trim(), amount: Number(row.mwd_amount || row.amount || 0) || 0 }))
 			.filter((row) => row.work || row.amount);
-		const total = clean_rows.reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		const total = clean_rows.reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 		return { json: JSON.stringify(clean_rows), total };
 	}
 
@@ -7349,7 +7350,10 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 
 	proto.save_form = async function (data, submit) {
 		if (!data || data.key !== "maintenance") {
-			return previous_save_form.call(this, data, submit);
+			if (typeof previous_save_form === "function") {
+				return previous_save_form.call(this, data, submit);
+			}
+			return;
 		}
 
 		const values = {};
@@ -7406,7 +7410,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		try {
 			const parsed = JSON.parse(String(raw));
 			return Array.isArray(parsed)
-				? parsed.map((row) => ({ work: String(row.work || row.name_of_repair_work || ""), amount: Number(row.amount || 0) || 0 })).filter((row) => row.work || row.amount)
+				? parsed.map((row) => ({ work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || ""), amount: Number(row.mwd_amount || row.amount || 0) || 0 })).filter((row) => row.work || row.amount)
 				: [];
 		} catch (error) {
 			return [];
@@ -7414,7 +7418,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	}
 
 	function total(rows) {
-		return (rows || []).reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		return (rows || []).reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 	}
 
 	function money(value) {
@@ -7488,7 +7492,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		try {
 			const parsed = JSON.parse(String(raw));
 			return Array.isArray(parsed)
-				? parsed.map((row) => ({ work: String(row.work || row.name_of_repair_work || ""), amount: Number(row.amount || 0) || 0 })).filter((row) => row.work || row.amount)
+				? parsed.map((row) => ({ work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || ""), amount: Number(row.mwd_amount || row.amount || 0) || 0 })).filter((row) => row.work || row.amount)
 				: [];
 		} catch (error) {
 			return [];
@@ -7496,7 +7500,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	}
 
 	function rows_total(rows) {
-		return (rows || []).reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		return (rows || []).reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 	}
 
 	function money(value) {
@@ -7508,7 +7512,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		const fallback_rows = portal._vmnp_maintenance_work_rows || [];
 		const final_rows = rows.length ? rows : fallback_rows;
 		const clean_rows = final_rows
-			.map((row) => ({ work: String(row.work || row.name_of_repair_work || "").trim(), amount: Number(row.amount || 0) || 0 }))
+			.map((row) => ({ work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || "").trim(), amount: Number(row.mwd_amount || row.amount || 0) || 0 }))
 			.filter((row) => row.work || row.amount);
 		return { rows: clean_rows, json: JSON.stringify(clean_rows), total: rows_total(clean_rows) };
 	}
@@ -7572,12 +7576,16 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 
 	proto.save_form = async function (data, submit) {
 		if (!data || data.key !== "maintenance") {
-			return previous_save_form.call(this, data, submit);
+			if (typeof previous_save_form === "function") {
+				return previous_save_form.call(this, data, submit);
+			}
+			return;
 		}
 
 		const values = {};
 		try {
 			Object.entries(this.controls || {}).forEach(([fieldname, control]) => {
+				if (!control || typeof control.get_value !== "function") return;
 				values[fieldname] = control.get_value();
 			});
 		} catch (error) {
@@ -7640,7 +7648,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		try {
 			const parsed = JSON.parse(String(raw));
 			return Array.isArray(parsed)
-				? parsed.map((row) => ({ work: String(row.work || row.name_of_repair_work || ""), amount: Number(row.amount || 0) || 0 })).filter((row) => row.work || row.amount)
+				? parsed.map((row) => ({ work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || ""), amount: Number(row.mwd_amount || row.amount || 0) || 0 })).filter((row) => row.work || row.amount)
 				: [];
 		} catch (error) {
 			return [];
@@ -7648,7 +7656,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	}
 
 	function total(rows) {
-		return rows.reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		return rows.reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 	}
 
 	function money(value) {
@@ -7730,8 +7738,8 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	function normalize_row(row) {
 		row = row || {};
 		return {
-			work: String(row.work || row.name_of_repair_work || row.repair_work || "").trim(),
-			amount: Number(row.amount || row.repair_amount || 0) || 0,
+			work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || row.repair_work || "").trim(),
+			amount: Number(row.mwd_amount || row.amount || row.repair_amount || 0) || 0,
 		};
 	}
 
@@ -7747,7 +7755,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	}
 
 	function rows_total(rows) {
-		return (rows || []).reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		return (rows || []).reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 	}
 
 	function money(value) {
@@ -7862,8 +7870,8 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	function normalize_row(row) {
 		row = row || {};
 		return {
-			work: String(row.work || row.name_of_repair_work || row.repair_work || "").trim(),
-			amount: Number(row.amount || row.repair_amount || 0) || 0,
+			work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || row.repair_work || "").trim(),
+			amount: Number(row.mwd_amount || row.amount || row.repair_amount || 0) || 0,
 		};
 	}
 
@@ -7879,7 +7887,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	}
 
 	function rows_total(rows) {
-		return (rows || []).reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		return (rows || []).reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 	}
 
 	function rows_json(rows) {
@@ -8657,100 +8665,132 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 })();
 
 
-/* VMNP approval states 2026-08-10 */
+
+/* VMNP DG total unit final stable calculation 2026-08-13 */
 (() => {
+	if (!window.VehicleManagementPortal) return;
 	const proto = VehicleManagementPortal.prototype;
-	const previous_render_detail = proto.render_detail;
 	const previous_render_form = proto.render_form;
-	const previous_format_value = proto.format_value;
-	const approval_keys = new Set(["vehicle_logs", "fuel_diesel", "maintenance", "rto_compliance", "dg_operations"]);
+	const previous_power_control_changed = proto.power_control_changed;
 
-	proto.approval_state = function (data = {}) {
-		return data.approval_state || data.values?.workflow_state || (data.docstatus === 1 ? "Approved" : "Draft");
-	};
+	const START_FIELD = "dg_start_reading";
+	const END_FIELD = "dg_end_reading";
+	const TOTAL_FIELD = "dg_total_dg_unit";
+	const CONSUMPTION_FIELD = "dg_diesel_consumption";
+	const DG_FIELDS = new Set([START_FIELD, END_FIELD]);
 
-	proto.approval_badge = function (data = {}) {
-		const state = this.approval_state(data);
-		const css_class = state === "Approved" ? "submitted" : state === "Pending" ? "draft" : "draft";
-		return `<span class="vmnp-status ${css_class}" data-approval-status><i></i>${frappe.utils.escape_html(__(state))}</span>`;
-	};
+	function input_for(portal, fieldname) {
+		const control = portal.controls && portal.controls[fieldname];
+		if (control?.$input?.length) return control.$input;
+		return portal.$view.find(`[data-control-field="${fieldname}"] input, [data-control-field="${fieldname}"] textarea`);
+	}
 
-	proto.bind_approval_actions = function (data) {
-		this.$view.off(".approval");
-		this.$view.on("click.approval", "[data-request-approval-record]", async () => {
-			const $button = this.$view.find("[data-request-approval-record]");
-			$button.prop("disabled", true).addClass("is-loading");
-			try {
-				const result = await this.api("request_approval_document", { key: data.key, name: data.name }, true);
-				frappe.show_alert({ message: result.message || __("Sent for approval"), indicator: "green" });
-				await this.show_detail(data.key, data.name);
-			} catch (error) {
-				this.notify_error(error);
-				$button.prop("disabled", false).removeClass("is-loading");
+	function raw(portal, fieldname) {
+		const $input = input_for(portal, fieldname);
+		if ($input.length) return String($input.val() ?? "").trim();
+		const control = portal.controls && portal.controls[fieldname];
+		return typeof control?.get_value === "function" ? String(control.get_value() ?? "").trim() : "";
+	}
+
+	function numeric(value) {
+		const text = String(value ?? "").replace(/,/g, "").trim();
+		if (!text) return null;
+		const parsed = Number(text);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+
+	function clean_input(input) {
+		const old_value = String(input.value || "");
+		const next = old_value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+		if (old_value !== next) input.value = next;
+	}
+
+	function set_direct(portal, fieldname, value) {
+		const next = value === null || value === undefined ? "" : String(value);
+		const $input = input_for(portal, fieldname);
+		if ($input.length) $input.val(next);
+		const control = portal.controls && portal.controls[fieldname];
+		if (control) {
+			control.value = next;
+			if (typeof control.set_value === "function") {
+				try { control.set_value(next); } catch (error) {}
 			}
-		});
-		this.$view.on("click.approval", "[data-approve-record]", () => {
-			frappe.confirm(__("Approve {0}?", [frappe.utils.escape_html(data.name)]), async () => {
-				const $button = this.$view.find("[data-approve-record]");
-				$button.prop("disabled", true).addClass("is-loading");
-				try {
-					const result = await this.api("approve_document", { key: data.key, name: data.name }, true);
-					frappe.show_alert({ message: result.message || __("Approved"), indicator: "green" });
-					await this.show_detail(data.key, data.name);
-				} catch (error) {
-					this.notify_error(error);
-					$button.prop("disabled", false).removeClass("is-loading");
-				}
+		}
+	}
+
+	function calculate(portal) {
+		if (portal.current_view?.key !== "dg_operations") return;
+		const start = numeric(raw(portal, START_FIELD));
+		const end = numeric(raw(portal, END_FIELD));
+		if (start === null || end === null || end < start) {
+			set_direct(portal, TOTAL_FIELD, "");
+			set_direct(portal, CONSUMPTION_FIELD, "");
+			return;
+		}
+		const unit = Math.round((end - start) * 1000) / 1000;
+		set_direct(portal, TOTAL_FIELD, unit);
+		set_direct(portal, CONSUMPTION_FIELD, unit);
+	}
+
+	function unbind_old_native_handlers(portal) {
+		const pairs = [
+			["_vmnp_dg_force_form", "_vmnp_dg_force_handler"],
+			["_vmnp_final_reading_guard_form", "_vmnp_final_reading_guard_input"],
+			["_vmnp_numeric_reading_form", "_vmnp_numeric_reading_handler"],
+		];
+		pairs.forEach(([form_key, handler_key]) => {
+			const form = portal[form_key];
+			const handler = portal[handler_key];
+			if (!form || !handler) return;
+			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+				try { form.removeEventListener(event_name, handler, true); } catch (error) {}
 			});
 		});
-	};
+	}
 
-	proto.render_detail = function (data) {
-		previous_render_detail.call(this, data);
-		if (!approval_keys.has(data.key)) return;
-		const $actions = this.$view.find(".vmnp-heading-actions");
-		if (!$actions.length) return;
-		$actions.find("[data-approval-status]").remove();
-		$actions.prepend(this.approval_badge(data));
-		if (data.can_request_approval && !this.$view.find("[data-request-approval-record]").length) {
-			$actions.append(`
-				<button class="vmnp-secondary-button" type="button" data-request-approval-record>
-					${this.icon("arrow-right")}<span>${__("Send for Approval")}</span>
-				</button>
-			`);
+	function bind(portal) {
+		if (portal.current_view?.key !== "dg_operations") return;
+		const form = portal.$view.find("[data-record-form]")[0];
+		if (!form) return;
+		unbind_old_native_handlers(portal);
+
+		if (portal._vmnp_dg_final_form && portal._vmnp_dg_final_handler) {
+			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+				try { portal._vmnp_dg_final_form.removeEventListener(event_name, portal._vmnp_dg_final_handler, true); } catch (error) {}
+			});
 		}
-		if (data.can_approve && !this.$view.find("[data-approve-record]").length) {
-			$actions.append(`
-				<button class="vmnp-primary-button" type="button" data-approve-record>
-					${this.icon("check")}<span>${__("Approve")}</span>
-				</button>
-			`);
-		}
-		this.bind_approval_actions(data);
-	};
+		portal._vmnp_dg_final_form = form;
+		portal._vmnp_dg_final_handler = (event) => {
+			const fieldname = $(event.target).closest("[data-control-field]").attr("data-control-field") || "";
+			if (!DG_FIELDS.has(fieldname)) return;
+			clean_input(event.target);
+			event.stopImmediatePropagation();
+			window.setTimeout(() => calculate(portal), 0);
+		};
+		["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+			form.addEventListener(event_name, portal._vmnp_dg_final_handler, true);
+		});
+		$(form)
+			.off(".vmnpDgFinalStable")
+			.find(`[data-control-field="${START_FIELD}"] input, [data-control-field="${END_FIELD}"] input`)
+			.attr("type", "text")
+			.attr("inputmode", "decimal");
+		window.setTimeout(() => calculate(portal), 0);
+	}
 
 	proto.render_form = function (data) {
 		previous_render_form.call(this, data);
-		if (!approval_keys.has(data.key)) return;
-		const $heading = this.$view.find(".vmnp-page-heading").first();
-		if (!$heading.length) return;
-		let $actions = $heading.find(".vmnp-heading-actions");
-		if (!$actions.length) {
-			$heading.append('<div class="vmnp-heading-actions"></div>');
-			$actions = $heading.find(".vmnp-heading-actions");
-		}
-		$actions.find("[data-approval-status]").remove();
-		$actions.prepend(this.approval_badge(data));
+		bind(this);
 	};
 
-	proto.format_value = function (value, field) {
-		if (field?.fieldname === "workflow_state") {
-			return this.approval_badge({ approval_state: value });
+	proto.power_control_changed = function (key, fieldname) {
+		if (key === "dg_operations" && DG_FIELDS.has(fieldname)) {
+			calculate(this);
+			return;
 		}
-		return previous_format_value.call(this, value, field);
+		return previous_power_control_changed.call(this, key, fieldname);
 	};
 })();
-
 
 /* VMNP maintenance add form work details guard 2026-08-10 */
 (() => {
@@ -8767,8 +8807,8 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	function normalize(row) {
 		row = row || {};
 		return {
-			work: String(row.work || row.name_of_repair_work || row.repair_work || "").trim(),
-			amount: Number(row.amount || row.repair_amount || 0) || 0,
+			work: String(row.mwd_repair_work || row.work || row.name_of_repair_work || row.repair_work || "").trim(),
+			amount: Number(row.mwd_amount || row.amount || row.repair_amount || 0) || 0,
 		};
 	}
 
@@ -8784,7 +8824,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	}
 
 	function rows_total(rows) {
-		return (rows || []).reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		return (rows || []).reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 	}
 
 	function rows_json(rows) {
@@ -8902,9 +8942,9 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 
 	function ensure_panel(portal, data) {
 		if (!data || data.key !== "maintenance") return;
-		const initial = data.is_new || !data.name
-			? parse_rows(data.values?.[WORK_FIELD])
-			: parse_rows(data.values?.[WORK_FIELD] || portal.controls?.[WORK_FIELD]?.get_value?.());
+		const table_rows = parse_rows(data.values?.md_work_details_table);
+		const json_rows = parse_rows(data.values?.[WORK_FIELD] || portal.controls?.[WORK_FIELD]?.get_value?.());
+		const initial = table_rows.length ? table_rows : json_rows;
 		sync(portal, initial);
 
 		let $panel = portal.$view.find("[data-md-work-panel]");
@@ -8970,7 +9010,10 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 
 	proto.save_form = async function (data, submit) {
 		if (!data || data.key !== "maintenance") {
-			return previous_save_form.call(this, data, submit);
+			if (typeof previous_save_form === "function") {
+				return previous_save_form.call(this, data, submit);
+			}
+			return;
 		}
 
 		const missing = [];
@@ -8991,6 +9034,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		const values = {};
 		try {
 			Object.entries(this.controls || {}).forEach(([fieldname, control]) => {
+				if (!control || typeof control.get_value !== "function") return;
 				values[fieldname] = control.get_value();
 			});
 		} catch (error) {
@@ -9003,8 +9047,12 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		}
 
 		const rows = maintenance_rows(this);
-		const total = rows.reduce((sum, row) => sum + (Number(row.amount || 0) || 0), 0);
+		const total = rows.reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 		values[WORK_FIELD] = JSON.stringify(rows);
+		values.md_work_details_table = rows.map((row) => ({
+			mwd_repair_work: String(row.work || "").trim(),
+			mwd_amount: Number(row.mwd_amount || row.amount || 0) || 0,
+		}));
 		values[TOTAL_FIELD] = total;
 
 		const $buttons = this.$view.find("[data-save-form], [data-submit-form]");
@@ -9020,6 +9068,20 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 				},
 				true
 			);
+			const saved_name = result?.name || data.name;
+			if (saved_name && values.md_work_details_table) {
+				await frappe.call({
+					method: "frappe.client.set_value",
+					type: "POST",
+					args: {
+						doctype: "Maintenance Details VMN",
+						name: saved_name,
+						fieldname: {
+							md_work_details_table: values.md_work_details_table,
+						},
+					},
+				});
+			}
 			frappe.show_alert({ message: result.message || __("Saved successfully"), indicator: "green" });
 			await this.show_list(data.key);
 			return result;
@@ -9069,3 +9131,298 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		return result;
 	};
 })();
+
+
+
+/* VMNP RTO edit dropdown saved value preload 2026-08-13 */
+(() => {
+	if (!window.VehicleManagementPortal) return;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+
+	const RTO_KEY = "rto_compliance";
+	const CAMPUS_FIELD = "rto_select_campus";
+	const SUPERVISOR_FIELD = "rto_supervisor_name";
+	const DOCUMENT_FIELD = "document_type";
+
+	function set_value(portal, fieldname, value) {
+		const next = value == null ? "" : String(value);
+		const control = portal.controls && portal.controls[fieldname];
+		if (control?.set_value) {
+			try { control.set_value(next); } catch (error) {}
+		}
+		if (control?.$input?.length) {
+			if (next && !control.$input.find(`option[value="${CSS.escape(next)}"]`).length && control.$input.is("select")) {
+				control.$input.append(new Option(next, next));
+			}
+			control.$input.val(next);
+		}
+		const $field = portal.$view.find(`[data-control-field="${fieldname}"]`);
+		const $input = $field.find("select, input, textarea").first();
+		if ($input.length) {
+			if (next && $input.is("select") && !$input.find(`option[value="${CSS.escape(next)}"]`).length) {
+				$input.append(new Option(next, next));
+			}
+			$input.val(next);
+		}
+	}
+
+	function restore(portal, data) {
+		if (!data || data.key !== RTO_KEY) return;
+		set_value(portal, DOCUMENT_FIELD, data.values?.[DOCUMENT_FIELD]);
+		set_value(portal, CAMPUS_FIELD, data.values?.[CAMPUS_FIELD]);
+		if (data.values?.[SUPERVISOR_FIELD]) {
+			set_value(portal, SUPERVISOR_FIELD, data.values[SUPERVISOR_FIELD]);
+			void portal.show_supervisor_full_name?.();
+		} else if (data.values?.[CAMPUS_FIELD] && typeof portal.load_rto_campus === "function") {
+			void portal.load_rto_campus();
+		}
+	}
+
+	proto.render_form = function (data) {
+		previous_render_form.call(this, data);
+		if (data?.key !== RTO_KEY) return;
+		restore(this, data);
+		window.setTimeout(() => restore(this, data), 200);
+		window.setTimeout(() => restore(this, data), 800);
+	};
+})();
+
+/* CODEX_MAINT_WORK_DETAILS_DISPLAY_FIX_START */
+(function () {
+  if (window.__vmnMaintWorkDetailsDisplayFixV3) return;
+  window.__vmnMaintWorkDetailsDisplayFixV3 = true;
+  if (!window.VehicleManagementPortal) return;
+
+  const proto = VehicleManagementPortal.prototype;
+  const previousRenderForm = proto.render_form;
+  const previousShowDetail = proto.show_detail;
+  const DOCTYPE = "Maintenance Details VMN";
+  const WORK_JSON_FIELD = "md_work_details";
+  const WORK_TABLE_FIELD = "md_work_details_table";
+  const TOTAL_FIELD = "md_total_repairingamount";
+  const WORK_NAME_FIELDS = ["mwd_repair_work", "name_of_repair_work", "repair_work", "repair_work_name", "work_name", "work"];
+  const AMOUNT_FIELDS = ["mwd_amount", "amount", "repair_amount", "work_amount"];
+
+  function label(value) {
+    return typeof __ === "function" ? __(value) : value;
+  }
+
+  function text(value) {
+    return value == null ? "" : String(value).trim();
+  }
+
+  function esc(value) {
+    if (window.frappe?.utils?.escape_html) return frappe.utils.escape_html(text(value));
+    return text(value).replace(/[&<>"']/g, function (ch) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[ch];
+    });
+  }
+
+  function numberValue(value) {
+    const parsed = Number(text(value).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function money(value) {
+    const amount = numberValue(value);
+    if (window.frappe?.format) return frappe.format(amount, { fieldtype: "Currency" });
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
+
+  function normalizeRow(row) {
+    row = row || {};
+    const work = WORK_NAME_FIELDS.map((field) => text(row[field])).find(Boolean) || "";
+    const amount = AMOUNT_FIELDS.map((field) => text(row[field])).find(Boolean) || "0";
+    return { work, amount: numberValue(amount) };
+  }
+
+  function parseRows(source) {
+    if (!source) return [];
+    if (typeof source === "string") {
+      try {
+        return parseRows(JSON.parse(source));
+      } catch (error) {
+        return [];
+      }
+    }
+    if (Array.isArray(source)) {
+      return source.map(normalizeRow).filter((row) => row.work || row.amount);
+    }
+    if (typeof source === "object") {
+      const childRows = parseRows(source[WORK_TABLE_FIELD]);
+      if (childRows.length) return childRows;
+      const jsonRows = parseRows(source[WORK_JSON_FIELD]);
+      if (jsonRows.length) return jsonRows;
+      for (const key of Object.keys(source)) {
+        if (/work/i.test(key) && Array.isArray(source[key])) {
+          const rows = parseRows(source[key]);
+          if (rows.length) return rows;
+        }
+      }
+    }
+    return [];
+  }
+
+  function rowsTotal(rows) {
+    return (rows || []).reduce((sum, row) => sum + numberValue(row.amount), 0);
+  }
+
+  function tableHtml(rows) {
+    if (!rows.length) {
+      return `<div class="vmnp-muted" style="padding:16px 0;">${esc(label("No work details added"))}</div>`;
+    }
+    return `
+      <table class="table table-bordered vmnp-work-summary-table">
+        <thead>
+          <tr>
+            <th>${esc(label("Name of Repair Work"))}</th>
+            <th class="text-right">${esc(label("Amount"))}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td>${esc(row.work)}</td>
+              <td class="text-right">${money(row.amount)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>${esc(label("Total"))}</th>
+            <th class="text-right">${money(rowsTotal(rows))}</th>
+          </tr>
+        </tfoot>
+      </table>`;
+  }
+
+  function syncPortalState(portal, rows) {
+    const cleanRows = parseRows(rows);
+    const json = JSON.stringify(cleanRows);
+    const total = rowsTotal(cleanRows);
+    portal._vmnp_maintenance_work_rows = cleanRows;
+    portal._vmnp_maintenance_work_json = json;
+    if (portal.controls?.[WORK_JSON_FIELD]?.set_value) {
+      try { portal.controls[WORK_JSON_FIELD].set_value(json); } catch (error) {}
+    }
+    if (portal.controls?.[TOTAL_FIELD]?.set_value) {
+      try { portal.controls[TOTAL_FIELD].set_value(total || ""); } catch (error) {}
+    }
+    return cleanRows;
+  }
+
+  function ensureFormPanel(portal) {
+    let $summary = portal.$view.find("[data-md-work-summary]").first();
+    if ($summary.length) return $summary;
+
+    const $actions = portal.$view.find(".vmnp-form-actions").first();
+    if (!$actions.length) return $();
+
+    $actions.before(`
+      <section class="vmnp-panel vmnp-form-section" data-md-work-panel="final">
+        <div class="vmnp-form-section-head">
+          <span>02</span><h2>${esc(label("Work Details"))}</h2>
+        </div>
+        <div style="padding:18px 24px; display:flex; justify-content:space-between; gap:16px; align-items:flex-start;">
+          <div data-md-work-summary style="flex:1;"></div>
+          <button class="vmnp-primary-button" type="button" data-md-work-open-add>+ ${esc(label("Add Work Details"))}</button>
+        </div>
+      </section>
+    `);
+    return portal.$view.find("[data-md-work-summary]").first();
+  }
+
+  function renderFormSummary(portal, rows) {
+    const cleanRows = syncPortalState(portal, rows);
+    const $summary = ensureFormPanel(portal);
+    if (!$summary.length) return false;
+    $summary.html(tableHtml(cleanRows));
+    return true;
+  }
+
+  function renderDetail(portal, rows) {
+    const cleanRows = syncPortalState(portal, rows);
+    const $sections = portal.$view.find(".vmnp-detail-sections").first();
+    if (!$sections.length) return false;
+
+    portal.$view
+      .find(".vmnp-maintenance-work-section, [data-md-work-detail-view], [data-vmnp-maint-work-details]")
+      .remove();
+
+    const header = typeof portal.panel_header === "function"
+      ? portal.panel_header(3, label("Work Details"), label("Maintenance Work"))
+      : `<div class="vmnp-form-section-head"><span>03</span><h2>${esc(label("Work Details"))}</h2></div>`;
+    const html = `
+      <section class="vmnp-panel vmnp-detail-section" data-vmnp-maint-work-details="1">
+        ${header}
+        <div style="padding:0 24px 20px; overflow:auto;">${tableHtml(cleanRows)}</div>
+      </section>
+    `;
+    const $attachment = $sections.children(".vmnp-detail-section").filter(function () {
+      return /attachments?/i.test(text($(this).find("h2,strong").first().text()) || text(this.textContent));
+    }).first();
+    if ($attachment.length) $(html).insertBefore($attachment);
+    else $sections.append(html);
+    return true;
+  }
+
+  async function fetchRows(portal, name) {
+    if (!name) return [];
+    try {
+      const response = await frappe.call({
+        method: "frappe.client.get",
+        args: { doctype: DOCTYPE, name },
+      });
+      const rows = parseRows(response?.message || {});
+      if (rows.length) return rows;
+    } catch (error) {}
+
+    try {
+      const data = await portal.api("get_document", { key: "maintenance", name });
+      return parseRows(data?.values || {});
+    } catch (error) {
+      return [];
+    }
+  }
+
+  window._vmnp_parse_saved_work_rows = parseRows;
+  window._vmnp_render_saved_work_details = function (portal, rows) {
+    renderDetail(portal, rows);
+  };
+
+  proto.render_form = function (data) {
+    const result = previousRenderForm.call(this, data);
+    if (data?.key === "maintenance") {
+      renderFormSummary(this, parseRows(data.values || {}));
+      if (!data.is_new && data.name) {
+        fetchRows(this, data.name).then((rows) => {
+          if (
+            rows.length &&
+            this.current_view?.type === "form" &&
+            this.current_view?.key === "maintenance" &&
+            this.current_view?.name === data.name
+          ) {
+            renderFormSummary(this, rows);
+          }
+        });
+      }
+    }
+    return result;
+  };
+
+  proto.show_detail = async function (key, name) {
+    const result = await previousShowDetail.call(this, key, name);
+    if (key === "maintenance") {
+      renderDetail(this, await fetchRows(this, name));
+    }
+    return result;
+  };
+})();
+/* CODEX_MAINT_WORK_DETAILS_DISPLAY_FIX_END */
+

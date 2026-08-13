@@ -60,6 +60,87 @@ def get_dg_details(dg_information, dg_campus=None):
 
 
 @frappe.whitelist()
+def get_master_list(doctype, fields=None, filters=None, order_by=None, limit=500, **kwargs):
+    """Small read-only master-data API used by the custom VMN page dropdowns.
+
+    Kept in v4 because the page JS points to vehicle_management_powerapp_v4.
+    """
+    import json
+
+    from frappe.utils import cint, cstr
+
+    kwargs.pop("cmd", None)
+    doctype = cstr(doctype).strip()
+    if not doctype:
+        return []
+    allowed_master_doctypes = {
+        "Campus Details VMN",
+        "Location Details VMN",
+        "Vehicle Details VMN",
+        "Vehicle User Details VMN",
+        "Supervisor for Campus VMN",
+        "Fuel Station VMN",
+        "Trust Name VMN",
+        "DG Location At Campus VMN",
+        "DG Campus VMN",
+        "Diesel Generator Information VMN",
+        "User",
+    }
+    use_get_all = doctype in allowed_master_doctypes
+    if not use_get_all and not frappe.has_permission(doctype, ptype="read"):
+        frappe.throw(frappe._("Not permitted"), frappe.PermissionError)
+
+    meta = frappe.get_meta(doctype)
+    valid_fields = {"name", "creation", "modified", "owner", "docstatus"}
+    valid_fields.update(df.fieldname for df in meta.fields if df.fieldname)
+
+    def parse_json(value, fallback):
+        if value in (None, ""):
+            return fallback
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except ValueError:
+                return fallback
+        return value
+
+    fields = parse_json(fields, ["name"])
+    if isinstance(fields, str):
+        fields = [fields]
+    fields = [cstr(field).strip() for field in (fields or ["name"]) if cstr(field).strip() in valid_fields]
+    if "name" not in fields:
+        fields.insert(0, "name")
+
+    raw_filters = parse_json(filters, {})
+    safe_filters = {}
+    if isinstance(raw_filters, dict):
+        for fieldname, value in raw_filters.items():
+            fieldname = cstr(fieldname).strip()
+            if fieldname in valid_fields and value not in (None, ""):
+                safe_filters[fieldname] = value
+
+    safe_order_parts = []
+    for part in cstr(order_by).split(","):
+        bits = part.strip().split()
+        if not bits:
+            continue
+        fieldname = bits[0].strip("`")
+        direction = bits[1].lower() if len(bits) > 1 else "asc"
+        if fieldname in valid_fields:
+            safe_order_parts.append(f"`tab{doctype}`.`{fieldname}` {'desc' if direction == 'desc' else 'asc'}")
+    safe_order_by = ", ".join(safe_order_parts) or f"`tab{doctype}`.`name` asc"
+
+    getter = frappe.get_all if use_get_all else frappe.get_list
+    return getter(
+        doctype,
+        fields=fields,
+        filters=safe_filters,
+        order_by=safe_order_by,
+        limit_page_length=min(max(cint(limit) or 500, 1), 1000),
+    )
+
+
+@frappe.whitelist()
 def get_campus_details(campus):
     config = powerapp_v3.powerapp_v2.base._get_config("campuses")
     powerapp_v3.powerapp_v2.base._check_permission(config, "read")
@@ -116,7 +197,7 @@ def get_document_list_multi(
 
     start = max(0, cint(start))
     page_length = min(base.MAX_PAGE_LENGTH, max(1, cint(page_length) or 20))
-    sort_by = cstr(sort_by) if cstr(sort_by) in allowed_sort_fields else (config.get("date_field") or "modified")
+    sort_by = cstr(sort_by) if cstr(sort_by) in allowed_sort_fields else "creation"
     sort_order = "asc" if cstr(sort_order).lower() == "asc" else "desc"
 
     if isinstance(filters, str):
@@ -166,7 +247,11 @@ def get_document_list_multi(
         fields=query_fields,
         filters=applied,
         or_filters=or_filters,
-        order_by=f"`tab{config['doctype']}`.`{sort_by}` {sort_order}",
+        order_by=(
+            f"`tab{config['doctype']}`.`{sort_by}` {sort_order}, "
+            f"`tab{config['doctype']}`.`creation` {sort_order}, "
+            f"`tab{config['doctype']}`.`name` {sort_order}"
+        ),
         limit_start=start,
         limit_page_length=page_length,
     )
@@ -198,6 +283,7 @@ def _approval_result(config, doc, message):
         "approval_state": base._approval_state(doc),
         "can_request_approval": base._can_request_approval(config, doc),
         "can_approve": base._can_approve(config, doc),
+        "workflow_transitions": base._workflow_transition_payloads(config, doc),
         "message": message,
     }
 
@@ -219,10 +305,18 @@ def request_approval_document(key, name):
     state = base._approval_state(doc)
     if state == "Pending":
         return _approval_result(config, doc, base._("{0} is already pending approval.").format(base._(config["label"])))
-    if state != "Draft":
-        frappe.throw(base._("Only draft records can be sent for approval."))
+    transition = next(
+        (
+            row
+            for row in base._workflow_transitions_for_user(config, doc)
+            if base._is_request_approval_transition(config, row)
+        ),
+        None,
+    )
+    if not transition:
+        frappe.throw(base._("No approval request transition is allowed for this record."))
 
-    doc.set(base.APPROVAL_STATE_FIELD, "Pending")
+    doc.set(base.APPROVAL_STATE_FIELD, transition.next_state)
     doc.save()
     frappe.db.commit()
     return _approval_result(config, doc, base._("{0} sent for approval.").format(base._(config["label"])))
@@ -247,7 +341,7 @@ def approve_document(key, name):
     if not base._can_approve(config, doc):
         frappe.throw(base._("You do not have approval permission for {0}.").format(base._(config["label"])))
 
-    if not frappe.has_permission(config["doctype"], ptype="submit", doc=doc) and base._is_vehicle_approval_user():
+    if not frappe.has_permission(config["doctype"], ptype="submit", doc=doc):
         doc.flags.ignore_permissions = True
     doc.set(base.APPROVAL_STATE_FIELD, "Approved")
     doc.submit()
