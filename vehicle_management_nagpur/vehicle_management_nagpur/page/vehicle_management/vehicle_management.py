@@ -121,6 +121,17 @@ def _workflow_docstatus_for_state(config, state):
     return None
 
 
+def _workflow_state_row(config, state):
+    workflow = _workflow_doc(config.get("doctype"))
+    if not workflow:
+        return None
+    state = cstr(state)
+    for row in workflow.states or []:
+        if cstr(row.state) == state:
+            return row
+    return None
+
+
 def _is_approve_transition(config, transition):
     action = cstr(transition.action).strip().lower()
     return action == "approve" or _workflow_docstatus_for_state(config, transition.next_state) == 1
@@ -160,8 +171,10 @@ def _can_request_approval(config, doc):
 def _can_edit_document(config, doc):
     if cint(doc.docstatus) != 0 or not doc.has_permission("write"):
         return False
-    if _uses_approval(config) and _approval_state(doc) == "Pending":
-        return False
+    if _uses_approval(config):
+        state_row = _workflow_state_row(config, _approval_state(doc))
+        allowed = cstr(getattr(state_row, "allow_edit", "")).strip() if state_row else ""
+        return _user_has_workflow_role(allowed) if allowed else True
     return True
 
 

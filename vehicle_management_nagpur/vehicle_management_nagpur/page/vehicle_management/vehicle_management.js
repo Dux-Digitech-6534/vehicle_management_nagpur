@@ -1732,6 +1732,7 @@ class VehicleManagementPortal {
 	};
 })();
 
+
 /* VMNP standard Frappe Workflow UI 2026-08-10 */
 (() => {
 	if (!window.VehicleManagementPortal) return;
@@ -1823,7 +1824,7 @@ class VehicleManagementPortal {
 			const state = state_data?.workflow_state || "Draft";
 			const $actions = portal.$view.find(".vmnp-heading-actions").first();
 			if (!$actions.length) return;
-			$actions.find("[data-approval-status]").remove();
+			$actions.find(".vmnp-status, [data-approval-status]").remove();
 			$actions.prepend(portal.approval_badge({ approval_state: state }));
 			$actions
 				.find("[data-request-approval-record], [data-approve-record], [data-frappe-workflow-action]")
@@ -8666,132 +8667,6 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 
 
 
-/* VMNP DG total unit final stable calculation 2026-08-13 */
-(() => {
-	if (!window.VehicleManagementPortal) return;
-	const proto = VehicleManagementPortal.prototype;
-	const previous_render_form = proto.render_form;
-	const previous_power_control_changed = proto.power_control_changed;
-
-	const START_FIELD = "dg_start_reading";
-	const END_FIELD = "dg_end_reading";
-	const TOTAL_FIELD = "dg_total_dg_unit";
-	const CONSUMPTION_FIELD = "dg_diesel_consumption";
-	const DG_FIELDS = new Set([START_FIELD, END_FIELD]);
-
-	function input_for(portal, fieldname) {
-		const control = portal.controls && portal.controls[fieldname];
-		if (control?.$input?.length) return control.$input;
-		return portal.$view.find(`[data-control-field="${fieldname}"] input, [data-control-field="${fieldname}"] textarea`);
-	}
-
-	function raw(portal, fieldname) {
-		const $input = input_for(portal, fieldname);
-		if ($input.length) return String($input.val() ?? "").trim();
-		const control = portal.controls && portal.controls[fieldname];
-		return typeof control?.get_value === "function" ? String(control.get_value() ?? "").trim() : "";
-	}
-
-	function numeric(value) {
-		const text = String(value ?? "").replace(/,/g, "").trim();
-		if (!text) return null;
-		const parsed = Number(text);
-		return Number.isFinite(parsed) ? parsed : null;
-	}
-
-	function clean_input(input) {
-		const old_value = String(input.value || "");
-		const next = old_value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
-		if (old_value !== next) input.value = next;
-	}
-
-	function set_direct(portal, fieldname, value) {
-		const next = value === null || value === undefined ? "" : String(value);
-		const $input = input_for(portal, fieldname);
-		if ($input.length) $input.val(next);
-		const control = portal.controls && portal.controls[fieldname];
-		if (control) {
-			control.value = next;
-			if (typeof control.set_value === "function") {
-				try { control.set_value(next); } catch (error) {}
-			}
-		}
-	}
-
-	function calculate(portal) {
-		if (portal.current_view?.key !== "dg_operations") return;
-		const start = numeric(raw(portal, START_FIELD));
-		const end = numeric(raw(portal, END_FIELD));
-		if (start === null || end === null || end < start) {
-			set_direct(portal, TOTAL_FIELD, "");
-			set_direct(portal, CONSUMPTION_FIELD, "");
-			return;
-		}
-		const unit = Math.round((end - start) * 1000) / 1000;
-		set_direct(portal, TOTAL_FIELD, unit);
-		set_direct(portal, CONSUMPTION_FIELD, unit);
-	}
-
-	function unbind_old_native_handlers(portal) {
-		const pairs = [
-			["_vmnp_dg_force_form", "_vmnp_dg_force_handler"],
-			["_vmnp_final_reading_guard_form", "_vmnp_final_reading_guard_input"],
-			["_vmnp_numeric_reading_form", "_vmnp_numeric_reading_handler"],
-		];
-		pairs.forEach(([form_key, handler_key]) => {
-			const form = portal[form_key];
-			const handler = portal[handler_key];
-			if (!form || !handler) return;
-			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
-				try { form.removeEventListener(event_name, handler, true); } catch (error) {}
-			});
-		});
-	}
-
-	function bind(portal) {
-		if (portal.current_view?.key !== "dg_operations") return;
-		const form = portal.$view.find("[data-record-form]")[0];
-		if (!form) return;
-		unbind_old_native_handlers(portal);
-
-		if (portal._vmnp_dg_final_form && portal._vmnp_dg_final_handler) {
-			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
-				try { portal._vmnp_dg_final_form.removeEventListener(event_name, portal._vmnp_dg_final_handler, true); } catch (error) {}
-			});
-		}
-		portal._vmnp_dg_final_form = form;
-		portal._vmnp_dg_final_handler = (event) => {
-			const fieldname = $(event.target).closest("[data-control-field]").attr("data-control-field") || "";
-			if (!DG_FIELDS.has(fieldname)) return;
-			clean_input(event.target);
-			event.stopImmediatePropagation();
-			window.setTimeout(() => calculate(portal), 0);
-		};
-		["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
-			form.addEventListener(event_name, portal._vmnp_dg_final_handler, true);
-		});
-		$(form)
-			.off(".vmnpDgFinalStable")
-			.find(`[data-control-field="${START_FIELD}"] input, [data-control-field="${END_FIELD}"] input`)
-			.attr("type", "text")
-			.attr("inputmode", "decimal");
-		window.setTimeout(() => calculate(portal), 0);
-	}
-
-	proto.render_form = function (data) {
-		previous_render_form.call(this, data);
-		bind(this);
-	};
-
-	proto.power_control_changed = function (key, fieldname) {
-		if (key === "dg_operations" && DG_FIELDS.has(fieldname)) {
-			calculate(this);
-			return;
-		}
-		return previous_power_control_changed.call(this, key, fieldname);
-	};
-})();
-
 /* VMNP maintenance add form work details guard 2026-08-10 */
 (() => {
 	if (!window.VehicleManagementPortal) return;
@@ -9134,60 +9009,6 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 
 
 
-/* VMNP RTO edit dropdown saved value preload 2026-08-13 */
-(() => {
-	if (!window.VehicleManagementPortal) return;
-	const proto = VehicleManagementPortal.prototype;
-	const previous_render_form = proto.render_form;
-
-	const RTO_KEY = "rto_compliance";
-	const CAMPUS_FIELD = "rto_select_campus";
-	const SUPERVISOR_FIELD = "rto_supervisor_name";
-	const DOCUMENT_FIELD = "document_type";
-
-	function set_value(portal, fieldname, value) {
-		const next = value == null ? "" : String(value);
-		const control = portal.controls && portal.controls[fieldname];
-		if (control?.set_value) {
-			try { control.set_value(next); } catch (error) {}
-		}
-		if (control?.$input?.length) {
-			if (next && !control.$input.find(`option[value="${CSS.escape(next)}"]`).length && control.$input.is("select")) {
-				control.$input.append(new Option(next, next));
-			}
-			control.$input.val(next);
-		}
-		const $field = portal.$view.find(`[data-control-field="${fieldname}"]`);
-		const $input = $field.find("select, input, textarea").first();
-		if ($input.length) {
-			if (next && $input.is("select") && !$input.find(`option[value="${CSS.escape(next)}"]`).length) {
-				$input.append(new Option(next, next));
-			}
-			$input.val(next);
-		}
-	}
-
-	function restore(portal, data) {
-		if (!data || data.key !== RTO_KEY) return;
-		set_value(portal, DOCUMENT_FIELD, data.values?.[DOCUMENT_FIELD]);
-		set_value(portal, CAMPUS_FIELD, data.values?.[CAMPUS_FIELD]);
-		if (data.values?.[SUPERVISOR_FIELD]) {
-			set_value(portal, SUPERVISOR_FIELD, data.values[SUPERVISOR_FIELD]);
-			void portal.show_supervisor_full_name?.();
-		} else if (data.values?.[CAMPUS_FIELD] && typeof portal.load_rto_campus === "function") {
-			void portal.load_rto_campus();
-		}
-	}
-
-	proto.render_form = function (data) {
-		previous_render_form.call(this, data);
-		if (data?.key !== RTO_KEY) return;
-		restore(this, data);
-		window.setTimeout(() => restore(this, data), 200);
-		window.setTimeout(() => restore(this, data), 800);
-	};
-})();
-
 /* CODEX_MAINT_WORK_DETAILS_DISPLAY_FIX_START */
 (function () {
   if (window.__vmnMaintWorkDetailsDisplayFixV3) return;
@@ -9426,3 +9247,322 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 })();
 /* CODEX_MAINT_WORK_DETAILS_DISPLAY_FIX_END */
 
+/* VMNP RTO edit preload final end-of-file 2026-08-14 */
+(() => {
+	if (!window.VehicleManagementPortal || window.__vmnpRtoPreloadFinalEnd) return;
+	window.__vmnpRtoPreloadFinalEnd = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+
+	const RTO_KEY = "rto_compliance";
+	const CAMPUS_FIELD = "rto_select_campus";
+	const SUPERVISOR_FIELD = "rto_supervisor_name";
+	const DOCUMENT_FIELD = "document_type";
+
+	function has_option($select, value) {
+		return $select
+			.find("option")
+			.toArray()
+			.some((option) => String(option.value) === String(value));
+	}
+
+	function put_value(portal, fieldname, value) {
+		const next = value == null ? "" : String(value);
+		const control = portal.controls && portal.controls[fieldname];
+
+		if (control) {
+			control.value = next;
+			try { control.set_value?.(next); } catch (error) {}
+			try { control.set_input?.(next); } catch (error) {}
+			if (control.$input?.length) {
+				if (control.$input.is("select") && next && !has_option(control.$input, next)) {
+					control.$input.append(new Option(next, next));
+				}
+				control.$input.val(next);
+			}
+		}
+
+		const $field = portal.$view.find(`[data-control-field="${fieldname}"]`).first();
+		const $inputs = $field.find("select, input, textarea");
+		$inputs.each(function () {
+			const $input = $(this);
+			if ($input.is("select") && next && !has_option($input, next)) {
+				$input.append(new Option(next, next));
+			}
+			$input.val(next);
+			if (next) $input.attr("value", next);
+		});
+	}
+
+	async function restore(portal, data) {
+		if (!data || data.key !== RTO_KEY) return;
+		const document_type = data.values?.[DOCUMENT_FIELD] || "";
+		const campus = data.values?.[CAMPUS_FIELD] || "";
+		const supervisor = data.values?.[SUPERVISOR_FIELD] || "";
+
+		put_value(portal, DOCUMENT_FIELD, document_type);
+		put_value(portal, CAMPUS_FIELD, campus);
+
+		if (campus && typeof portal.load_campus_options === "function") {
+			try { await portal.load_campus_options(CAMPUS_FIELD, campus); } catch (error) {}
+			put_value(portal, CAMPUS_FIELD, campus);
+		}
+
+		if (supervisor) {
+			put_value(portal, SUPERVISOR_FIELD, supervisor);
+			try { await portal.show_supervisor_full_name?.(); } catch (error) {}
+			return;
+		}
+
+		if (campus && typeof portal.load_rto_campus === "function") {
+			try { await portal.load_rto_campus(); } catch (error) {}
+			try { await portal.show_supervisor_full_name?.(); } catch (error) {}
+		}
+	}
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (data?.key !== RTO_KEY) return result;
+		void restore(this, data);
+		[100, 350, 900, 1600].forEach((delay) => {
+			window.setTimeout(() => void restore(this, data), delay);
+		});
+		return result;
+	};
+})();
+
+/* VMNP DG total unit final end-of-file 2026-08-14 */
+(() => {
+	if (!window.VehicleManagementPortal || window.__vmnpDgTotalFinalEnd) return;
+	window.__vmnpDgTotalFinalEnd = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_power_control_changed = proto.power_control_changed;
+	const previous_save_form = proto.save_form;
+
+	const KEY = "dg_operations";
+	const START_FIELD = "dg_start_reading";
+	const END_FIELD = "dg_end_reading";
+	const TOTAL_FIELD = "dg_total_dg_unit";
+	const CONSUMPTION_FIELD = "dg_diesel_consumption";
+	const READING_FIELDS = new Set([START_FIELD, END_FIELD]);
+
+	function $input(portal, fieldname) {
+		const control = portal.controls && portal.controls[fieldname];
+		if (control?.$input?.length) return control.$input;
+		return portal.$view.find(`[data-control-field="${fieldname}"] input, [data-control-field="${fieldname}"] textarea`);
+	}
+
+	function raw(portal, fieldname) {
+		const input = $input(portal, fieldname);
+		if (input.length) return String(input.val() ?? "").trim();
+		const control = portal.controls && portal.controls[fieldname];
+		return typeof control?.get_value === "function" ? String(control.get_value() ?? "").trim() : "";
+	}
+
+	function numeric(value) {
+		const text = String(value ?? "").replace(/,/g, "").trim();
+		if (!text) return null;
+		const parsed = Number(text);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+
+	function clean(el) {
+		const old_value = String(el.value || "");
+		const next = old_value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+		if (old_value !== next) el.value = next;
+	}
+
+	function set_value(portal, fieldname, value) {
+		const next = value === null || value === undefined ? "" : String(value);
+		const input = $input(portal, fieldname);
+		if (input.length) input.val(next).attr("value", next);
+		const control = portal.controls && portal.controls[fieldname];
+		if (!control) return;
+		control.value = next;
+		if (typeof control.set_value === "function") {
+			try { control.set_value(next); } catch (error) {}
+		}
+	}
+
+	function calculate(portal) {
+		if (portal.current_view?.key !== KEY) return;
+		const start = numeric(raw(portal, START_FIELD));
+		const end = numeric(raw(portal, END_FIELD));
+		if (start === null || end === null || end < start) {
+			set_value(portal, TOTAL_FIELD, "");
+			set_value(portal, CONSUMPTION_FIELD, "");
+			return;
+		}
+		const unit = Math.round((end - start) * 1000) / 1000;
+		set_value(portal, TOTAL_FIELD, unit);
+		set_value(portal, CONSUMPTION_FIELD, unit);
+	}
+
+	function remove_old_native(portal) {
+		const pairs = [
+			["_vmnp_dg_force_form", "_vmnp_dg_force_handler"],
+			["_vmnp_final_reading_guard_form", "_vmnp_final_reading_guard_input"],
+			["_vmnp_numeric_reading_form", "_vmnp_numeric_reading_handler"],
+			["_vmnp_dg_final_form", "_vmnp_dg_final_handler"],
+		];
+		pairs.forEach(([form_key, handler_key]) => {
+			const form = portal[form_key];
+			const handler = portal[handler_key];
+			if (!form || !handler) return;
+			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+				try { form.removeEventListener(event_name, handler, true); } catch (error) {}
+			});
+		});
+	}
+
+	function bind(portal) {
+		if (portal.current_view?.key !== KEY) return;
+		const form = portal.$view.find("[data-record-form]")[0];
+		if (!form) return;
+		remove_old_native(portal);
+
+		if (portal._vmnp_dg_end_form && portal._vmnp_dg_end_handler) {
+			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+				try { portal._vmnp_dg_end_form.removeEventListener(event_name, portal._vmnp_dg_end_handler, true); } catch (error) {}
+			});
+		}
+
+		let timer = null;
+		const run_soon = (delay) => {
+			window.clearTimeout(timer);
+			timer = window.setTimeout(() => calculate(portal), delay);
+		};
+
+		portal._vmnp_dg_end_form = form;
+		portal._vmnp_dg_end_handler = (event) => {
+			const fieldname = $(event.target).closest("[data-control-field]").attr("data-control-field") || "";
+			if (!READING_FIELDS.has(fieldname)) return;
+			clean(event.target);
+			event.stopImmediatePropagation();
+			event.stopPropagation();
+			const delay = event.type === "input" || event.type === "keyup" ? 350 : 0;
+			run_soon(delay);
+		};
+
+		["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+			form.addEventListener(event_name, portal._vmnp_dg_end_handler, true);
+		});
+
+		$(form)
+			.off(".vmnpDgTotalFinalEnd")
+			.find(`[data-control-field="${START_FIELD}"] input, [data-control-field="${END_FIELD}"] input`)
+			.attr("type", "text")
+			.attr("inputmode", "decimal");
+
+		calculate(portal);
+	}
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (data?.key === KEY) bind(this);
+		return result;
+	};
+
+	proto.power_control_changed = function (key, fieldname) {
+		if (key === KEY && READING_FIELDS.has(fieldname)) {
+			calculate(this);
+			return;
+		}
+		return previous_power_control_changed.call(this, key, fieldname);
+	};
+
+proto.save_form = async function (data, submit) {
+		if (data?.key === KEY) calculate(this);
+		return previous_save_form.call(this, data, submit);
+	};
+})();
+
+/* VMNP workflow actions final render guard 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpWorkflowActionsFinalGuard) return;
+	window.__vmnpWorkflowActionsFinalGuard = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_detail = proto.render_detail;
+
+	function workflow_state(data) {
+		return String(data?.approval_state || data?.values?.workflow_state || (data?.docstatus === 1 ? "Approved" : "Draft"));
+	}
+
+	function render_payload_actions(portal, data) {
+		const transitions = Array.isArray(data?.workflow_transitions) ? data.workflow_transitions : [];
+		if (!portal || !data) return false;
+		const $actions = portal.$view.find(".vmnp-heading-actions").first();
+		if (!$actions.length) return false;
+
+		$actions.find(".vmnp-status, [data-approval-status]").remove();
+		if (typeof portal.approval_badge === "function") {
+			$actions.prepend(portal.approval_badge({ approval_state: workflow_state(data) }));
+		}
+		$actions
+			.find("[data-request-approval-record], [data-approve-record], [data-frappe-workflow-action]")
+			.remove();
+
+		if (!transitions.length) return true;
+
+		transitions.forEach((transition) => {
+			const action = String(transition.action || "");
+			if (!action) return;
+			const button_class = action.toLowerCase() === "approve" ? "vmnp-primary-button" : "vmnp-secondary-button";
+			$actions.append(`
+				<button class="${button_class}" type="button"
+					data-frappe-workflow-action="${frappe.utils.escape_html(action)}">
+					<span>${frappe.utils.escape_html(__(action))}</span>
+				</button>
+			`);
+		});
+
+		portal.$view.off("click.vmnpWorkflowFinalGuard").on("click.vmnpWorkflowFinalGuard", "[data-frappe-workflow-action]", (event) => {
+			const action = String($(event.currentTarget).attr("data-frappe-workflow-action") || "");
+			if (!action) return;
+			const apply = () => {
+				portal.$view.find("[data-frappe-workflow-action]").prop("disabled", true);
+				frappe
+					.call({
+						method: "frappe.model.workflow.apply_workflow",
+						args: { doc: JSON.stringify({ doctype: data.doctype, name: data.name }), action },
+						freeze: true,
+						freeze_message: __("Applying workflow action..."),
+					})
+					.then(() => portal.show_detail(data.key, data.name))
+					.catch((error) => {
+						portal.notify_error?.(error);
+						portal.$view.find("[data-frappe-workflow-action]").prop("disabled", false);
+					});
+			};
+			if (["approve", "reject", "cancel"].includes(action.toLowerCase())) {
+				frappe.confirm(__("{0} this record?", [action]), apply);
+				return;
+			}
+			apply();
+		});
+		return true;
+	}
+
+	function refresh_workflow_actions(portal, data) {
+		if (!portal || !data) return;
+		render_payload_actions(portal, data);
+		if (typeof window._vmnp_render_frappe_workflow_actions !== "function") return;
+		window._vmnp_render_frappe_workflow_actions(portal, data);
+		setTimeout(() => {
+			render_payload_actions(portal, data);
+			window._vmnp_render_frappe_workflow_actions?.(portal, data);
+		}, 300);
+		setTimeout(() => {
+			render_payload_actions(portal, data);
+			window._vmnp_render_frappe_workflow_actions?.(portal, data);
+		}, 900);
+	}
+
+	proto.render_detail = function (data) {
+		const result = previous_render_detail.call(this, data);
+		refresh_workflow_actions(this, data);
+		return result;
+	};
+})();

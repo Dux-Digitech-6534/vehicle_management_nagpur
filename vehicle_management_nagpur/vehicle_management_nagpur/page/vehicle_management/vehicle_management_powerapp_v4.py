@@ -290,7 +290,7 @@ def _approval_result(config, doc, message):
 
 @frappe.whitelist()
 def request_approval_document(key, name):
-    """Move a draft VMN record to Pending approval without changing other data."""
+    """Move a VMN record to the next approval state without changing other data."""
     from frappe.utils import cstr
 
     base = powerapp_v3.powerapp_v2.base
@@ -298,13 +298,11 @@ def request_approval_document(key, name):
     config = base._get_config(key)
     doc = frappe.get_doc(config["doctype"], cstr(name))
     base._check_permission(config, "write", doc=doc)
-    if not base._uses_approval(config) or not doc.meta.has_field(base.APPROVAL_STATE_FIELD):
+    state_field = base._workflow_state_field(config["doctype"])
+    if not base._uses_approval(config) or not doc.meta.has_field(state_field):
         frappe.throw(base._("{0} does not use approval.").format(base._(config["label"])))
     if doc.docstatus != 0:
         frappe.throw(base._("Only draft records can be sent for approval."))
-    state = base._approval_state(doc)
-    if state == "Pending":
-        return _approval_result(config, doc, base._("{0} is already pending approval.").format(base._(config["label"])))
     transition = next(
         (
             row
@@ -316,7 +314,7 @@ def request_approval_document(key, name):
     if not transition:
         frappe.throw(base._("No approval request transition is allowed for this record."))
 
-    doc.set(base.APPROVAL_STATE_FIELD, transition.next_state)
+    doc.set(state_field, transition.next_state)
     doc.save()
     frappe.db.commit()
     return _approval_result(config, doc, base._("{0} sent for approval.").format(base._(config["label"])))
@@ -324,7 +322,7 @@ def request_approval_document(key, name):
 
 @frappe.whitelist()
 def approve_document(key, name):
-    """Approve a pending VMN record and submit it."""
+    """Run the active approval transition for a VMN record."""
     from frappe.utils import cstr
 
     base = powerapp_v3.powerapp_v2.base
@@ -332,19 +330,34 @@ def approve_document(key, name):
     config = base._get_config(key)
     doc = frappe.get_doc(config["doctype"], cstr(name))
     base._check_permission(config, "read", doc=doc)
-    if not base._uses_approval(config) or not doc.meta.has_field(base.APPROVAL_STATE_FIELD):
+    state_field = base._workflow_state_field(config["doctype"])
+    if not base._uses_approval(config) or not doc.meta.has_field(state_field):
         frappe.throw(base._("{0} does not use approval.").format(base._(config["label"])))
-    if doc.docstatus != 0 or base._approval_state(doc) != "Pending":
-        frappe.throw(base._("Only pending records can be approved."))
-    if not doc.meta.is_submittable:
-        frappe.throw(base._("{0} cannot be submitted.").format(base._(config["label"])))
     if not base._can_approve(config, doc):
         frappe.throw(base._("You do not have approval permission for {0}.").format(base._(config["label"])))
 
-    if not frappe.has_permission(config["doctype"], ptype="submit", doc=doc):
-        doc.flags.ignore_permissions = True
-    doc.set(base.APPROVAL_STATE_FIELD, "Approved")
-    doc.submit()
+    transition = next(
+        (
+            row
+            for row in base._workflow_transitions_for_user(config, doc)
+            if base._is_approve_transition(config, row)
+        ),
+        None,
+    )
+    if not transition:
+        frappe.throw(base._("No approval transition is allowed for this record."))
+
+    next_docstatus = base._workflow_docstatus_for_state(config, transition.next_state)
+    if next_docstatus == 1:
+        if not doc.meta.is_submittable:
+            frappe.throw(base._("{0} cannot be submitted.").format(base._(config["label"])))
+        if not frappe.has_permission(config["doctype"], ptype="submit", doc=doc):
+            doc.flags.ignore_permissions = True
+        doc.set(state_field, transition.next_state)
+        doc.submit()
+    else:
+        doc.set(state_field, transition.next_state)
+        doc.save()
     frappe.db.commit()
     return _approval_result(config, doc, base._("{0} approved.").format(base._(config["label"])))
 
