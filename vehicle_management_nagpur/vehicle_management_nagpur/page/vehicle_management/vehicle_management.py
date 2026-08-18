@@ -178,6 +178,37 @@ def _can_edit_document(config, doc):
     return True
 
 
+def _diesel_previous_fill_up_reading(doc):
+    vehicle = cstr(doc.get("dd_vehicle_number")).strip()
+    if not vehicle:
+        return None
+    filters = {"dd_vehicle_number": vehicle}
+    if cstr(doc.get("name")).strip():
+        filters["name"] = ["!=", doc.name]
+    rows = frappe.get_all(
+        "Diesel Details VMN",
+        filters=filters,
+        fields=["dd_fuel_fill_up_reading"],
+        order_by="dd_date desc, creation desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    value = rows[0].get("dd_fuel_fill_up_reading")
+    return flt(value) if value not in (None, "") else None
+
+
+def _apply_diesel_previous_display(doc, values):
+    if doc.doctype != "Diesel Details VMN":
+        return
+    current = values.get("dd_previous_fuel_fill_up_reading")
+    if current not in (None, "") and flt(current) != 0:
+        return
+    previous = _diesel_previous_fill_up_reading(doc)
+    if previous is not None:
+        values["dd_previous_fuel_fill_up_reading"] = previous
+
+
 DOCUMENT_CONFIG = {
     "vehicle_logs": {
         "label": "Log Details",
@@ -768,6 +799,8 @@ def get_document(key, name):
             }
             for row in (doc.get("md_work_details_table") or [])
         ]
+    elif key == "fuel_diesel":
+        _apply_diesel_previous_display(doc, values)
 
     approval_state = _approval_state(doc) if _uses_approval(config) else ""
     if approval_state and _field_exists(meta, APPROVAL_STATE_FIELD):
@@ -814,6 +847,8 @@ def get_document_form(key, name=None):
             }
             for row in (doc.get("md_work_details_table") or [])
         ]
+    elif key == "fuel_diesel":
+        _apply_diesel_previous_display(doc, values)
 
     approval_state = _approval_state(doc) if _uses_approval(config) else ""
     if approval_state and _field_exists(meta, APPROVAL_STATE_FIELD):
@@ -850,6 +885,16 @@ def save_document(key, values, name=None, submit=0):
     config = _get_config(key)
     meta = _get_meta(config)
     values = frappe.parse_json(values) if isinstance(values, str) else (values or {})
+
+    # DG Date is a Date field. Its default can arrive as a full datetime; keep only
+    # the selected calendar date before Frappe performs Date-field validation.
+    if key == "dg_operations" and values.get("dgd_date"):
+        raw_date = cstr(values.get("dgd_date")).strip()
+        date_part = raw_date[:10]
+        if len(date_part) == 10 and date_part[4:5] == "-" and date_part[7:8] == "-":
+            values["dgd_date"] = date_part
+        elif len(date_part) == 10 and date_part[2:3] in {"/", "-"} and date_part[5:6] in {"/", "-"}:
+            values["dgd_date"] = f"{date_part[6:10]}-{date_part[3:5]}-{date_part[0:2]}"
     is_new = not cstr(name)
 
     if is_new:

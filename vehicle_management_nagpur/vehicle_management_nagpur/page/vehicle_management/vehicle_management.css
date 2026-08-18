@@ -4,6 +4,260 @@
 	display: none;
 }
 
+/* Unified operational UX — 2026-08-18 */
+.vmnp-toolbar-search input[type="search"]::-webkit-search-cancel-button,
+.vmnp-toolbar-search input[type="search"]::-webkit-search-decoration {
+	display: none;
+	-webkit-appearance: none;
+}
+
+.vmnp-toolbar-search input[type="search"] {
+	appearance: textfield;
+}
+
+.vmnp-control-slot.is-locked-reading input {
+	color: var(--vmnp-text-soft) !important;
+	background: color-mix(in srgb, var(--vmnp-border) 34%, var(--vmnp-surface)) !important;
+	cursor: not-allowed;
+}
+
+.vmnp-control-slot.is-locked-reading .vmnp-field-label::after {
+	margin-left: 6px;
+	color: var(--vmnp-teal);
+	font-family: var(--vmnp-font-ui);
+	font-size: 9px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	content: "Previous end";
+}
+
+.vmnp-notice-stack {
+	position: fixed;
+	top: 22px;
+	right: 24px;
+	z-index: 5000;
+	display: grid;
+	width: min(390px, calc(100vw - 32px));
+	gap: 10px;
+	pointer-events: none;
+}
+
+.vmnp-notice {
+	display: grid;
+	grid-template-columns: 4px 1fr;
+	gap: 12px;
+	align-items: stretch;
+	padding: 13px 15px 13px 11px;
+	opacity: 0;
+	color: var(--vmnp-text);
+	background: color-mix(in srgb, var(--vmnp-surface) 96%, transparent);
+	border: 1px solid var(--vmnp-border-strong);
+	border-radius: 12px;
+	box-shadow: var(--vmnp-shadow);
+	transform: translateY(-8px);
+	transition: opacity 180ms ease, transform 220ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.vmnp-notice > span {
+	width: 4px;
+	background: var(--vmnp-danger);
+	border-radius: 999px;
+}
+
+.vmnp-notice strong {
+	font-size: 12px;
+	font-weight: 550;
+	line-height: 1.45;
+}
+
+.vmnp-notice.is-visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.vmnp-date-popover {
+	z-index: 4500;
+	padding: 12px;
+	color: var(--vmnp-text);
+	background: var(--vmnp-surface);
+	border: 1px solid var(--vmnp-border-strong);
+	border-radius: 16px;
+	box-shadow: 0 22px 55px rgba(17, 24, 39, 0.18), var(--vmnp-shadow);
+}
+
+.vmnp-date-popover[hidden] {
+	display: none !important;
+}
+
+.vmnp-date-popover::before {
+	position: absolute;
+	top: 0;
+	left: 18px;
+	right: 18px;
+	height: 2px;
+	background: var(--vmnp-gradient);
+	border-radius: 0 0 999px 999px;
+	content: "";
+}
+
+.vmnp-date-popover-head {
+	display: grid;
+	grid-template-columns: 34px 1fr 34px;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.vmnp-date-popover-head strong {
+	font-size: 13px;
+	font-weight: 600;
+	text-align: center;
+}
+
+.vmnp-date-popover-head button,
+.vmnp-date-days button,
+.vmnp-date-today {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--vmnp-text-soft);
+	background: transparent;
+	border: 0;
+	cursor: pointer;
+}
+
+.vmnp-date-popover-head button {
+	width: 34px;
+	height: 34px;
+	border-radius: 9px;
+}
+
+.vmnp-date-popover-head button:hover,
+.vmnp-date-days button:hover {
+	color: var(--vmnp-primary);
+	background: color-mix(in srgb, var(--vmnp-primary) 9%, transparent);
+}
+
+.vmnp-date-popover-head svg {
+	width: 15px;
+	height: 15px;
+}
+
+.vmnp-date-weekdays,
+.vmnp-date-days {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 3px;
+}
+
+.vmnp-date-weekdays span {
+	padding: 5px 0;
+	color: var(--vmnp-muted);
+	font-family: var(--vmnp-font-mono);
+	font-size: 9px;
+	font-weight: 600;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+.vmnp-date-days button,
+.vmnp-date-days > span {
+	min-width: 0;
+	height: 34px;
+	font-family: var(--vmnp-font-mono);
+	font-size: 11px;
+	border: 1px solid transparent;
+	border-radius: 9px;
+}
+
+.vmnp-date-days button.is-today {
+	color: var(--vmnp-teal);
+	border-color: color-mix(in srgb, var(--vmnp-teal) 35%, transparent);
+}
+
+.vmnp-date-days button.is-selected {
+	color: #fff;
+	background: var(--vmnp-gradient);
+	box-shadow: 0 5px 14px color-mix(in srgb, var(--vmnp-primary) 25%, transparent);
+}
+
+.vmnp-date-today {
+	width: 100%;
+	height: 34px;
+	margin-top: 9px;
+	color: var(--vmnp-primary);
+	font-size: 11px;
+	font-weight: 600;
+	border-top: 1px solid var(--vmnp-border);
+}
+
+.vmnp-time-input.vmnp-custom-time {
+	position: relative;
+	grid-template-columns: 34px minmax(66px, .8fr) minmax(72px, 1fr) minmax(78px, 1fr);
+	gap: 7px;
+	align-items: center;
+}
+
+.vmnp-time-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 42px;
+	color: var(--vmnp-primary);
+	background: color-mix(in srgb, var(--vmnp-primary) 9%, var(--vmnp-surface));
+	border: 1px solid color-mix(in srgb, var(--vmnp-primary) 18%, var(--vmnp-border));
+	border-radius: 10px;
+}
+
+.vmnp-time-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vmnp-custom-time .vmnp-select {
+	height: 42px;
+	min-width: 0 !important;
+	padding: 0 25px 0 10px;
+	font-family: var(--vmnp-font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+.vmnp-custom-time .vmnp-combo {
+	min-width: 0;
+	height: 42px;
+}
+
+.vmnp-custom-time .vmnp-combo-display {
+	height: 42px;
+	font-family: var(--vmnp-font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+.vmnp-custom-time .vmnp-combo-panel {
+	min-width: 120px;
+}
+
+.vmnp-custom-time .vmnp-select option:disabled {
+	color: var(--vmnp-muted);
+}
+
+@media (max-width: 560px) {
+	.vmnp-notice-stack {
+		top: 12px;
+		right: 16px;
+	}
+
+	.vmnp-time-input.vmnp-custom-time {
+		grid-template-columns: 34px 1fr 1fr;
+	}
+
+	.vmnp-custom-time [data-time-period] {
+		grid-column: 2 / -1;
+	}
+}
+
 .vmnp-page-host .page-body,
 .vmnp-page-host .layout-main,
 .vmnp-page-host .layout-main-section-wrapper,
@@ -538,7 +792,7 @@
 	justify-content: space-between;
 	min-height: 218px;
 	overflow: hidden;
-	padding: clamp(27px, 4vw, 52px);
+	padding: clamp(27px, 4vw, 20px);
 	background: var(--vmnp-gradient-soft), var(--vmnp-surface);
 	border: 1px solid var(--vmnp-border);
 	border-top: 3px solid transparent;
@@ -2303,6 +2557,7 @@ textarea.vmnp-input {
 
 /* RTO expiry alert — dashboard ke sabse upar. */
 .vmnp-expiry-alert {
+	margin-top: 20px;
 	margin-bottom: 16px;
 	border: 1px solid color-mix(in srgb, var(--vmnp-amber) 35%, var(--vmnp-border));
 	overflow: hidden;

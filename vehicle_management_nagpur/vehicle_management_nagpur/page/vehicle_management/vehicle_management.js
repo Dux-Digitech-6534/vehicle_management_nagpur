@@ -269,9 +269,6 @@ class VehicleManagementPortal {
 						<div class="vmnp-greeting">${frappe.utils.escape_html(greeting)}</div>
 						<div class="vmnp-eyebrow">${__("DUX DIGITECH · VEHICLE OPERATIONS")}</div>
 						<h1>${__("Vehicle Management")} <span>${__("Nagpur")}</span></h1>
-						<p>${__(
-							"Manage daily fleet operations, masters, settings and compliance from one connected workspace."
-						)}</p>
 					</div>
 					<div class="vmnp-hero-art" aria-hidden="true">
 						<div class="vmnp-orbit"></div>
@@ -348,13 +345,17 @@ class VehicleManagementPortal {
 	}
 
 	recent_template(row) {
+		const raw_title = String(row.title || row.name || "");
+		const title = /^\d{4}-\d{2}-\d{2}(?:\s|$)/.test(raw_title)
+			? this.format_date(raw_title)
+			: raw_title;
 		return `
 			<button class="vmnp-recent-row" type="button" data-recent-key="${row.key}"
 				data-recent-name="${frappe.utils.escape_html(row.name)}">
 				<span class="vmnp-recent-icon">${this.icon(this.menu_items[row.key]?.icon || "file")}</span>
 				<span class="vmnp-recent-copy">
 					<small>${frappe.utils.escape_html(row.module)}</small>
-					<strong>${frappe.utils.escape_html(String(row.title || row.name))}</strong>
+					<strong>${frappe.utils.escape_html(title)}</strong>
 					<em>${this.format_date(row.date)}</em>
 				</span>
 				<span class="vmnp-card-arrow">${this.icon("arrow-right")}</span>
@@ -460,8 +461,6 @@ class VehicleManagementPortal {
 							aria-label="${state.sort_order === "asc" ? __("Ascending") : __("Descending")}">
 							<span>${state.sort_order === "asc" ? "A" : "D"}</span>
 						</button>
-						<button class="vmnp-icon-button vmnp-clear-button" type="button" data-clear-list
-							title="${__("Clear filters")}">${this.icon("close")}</button>
 					</div>
 
 					<div class="vmnp-table-wrap">
@@ -1732,6 +1731,120 @@ class VehicleManagementPortal {
 	};
 })();
 
+/* VMNP Diesel fuel fill-up reading floor guard 2026-08-18 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpDieselFuelReadingFloorGuard) return;
+	window.__vmnpDieselFuelReadingFloorGuard = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_save_form = proto.save_form;
+	const KEY = "fuel_diesel";
+	const CURRENT_FIELD = "dd_fuel_fill_up_reading";
+	const PREVIOUS_FIELD = "dd_previous_fuel_fill_up_reading";
+	const AVERAGE_FIELD = "dd_average";
+
+	function field_input(portal, fieldname) {
+		const control = portal.controls?.[fieldname];
+		if (control?.$input?.length) return control.$input.first();
+		return portal.$view.find(`[data-control-field="${fieldname}"] input`).first();
+	}
+
+	function numeric_value(portal, fieldname) {
+		const $input = field_input(portal, fieldname);
+		let raw = $input.length ? $input.val() : portal.controls?.[fieldname]?.get_value?.();
+		raw = String(raw ?? "").replace(/,/g, "").trim();
+		if (!raw) return null;
+		const value = Number(raw);
+		return Number.isFinite(value) ? value : null;
+	}
+
+	function set_field_value(portal, fieldname, value) {
+		const next = String(value);
+		const $input = field_input(portal, fieldname);
+		if ($input.length) $input.val(next).attr("value", next);
+		const control = portal.controls?.[fieldname];
+		if (!control) return;
+		control.value = next;
+		try { control.set_value?.(next); } catch (error) {}
+	}
+
+	function validate_fuel_reading(portal, show_notice = false) {
+		if (portal?._power_form_data?.key !== KEY) return true;
+		const current = numeric_value(portal, CURRENT_FIELD);
+		const previous = numeric_value(portal, PREVIOUS_FIELD);
+		if (current === null || previous === null || current >= previous) return true;
+
+		set_field_value(portal, CURRENT_FIELD, 0);
+		set_field_value(portal, AVERAGE_FIELD, 0);
+		portal._vmnp_diesel_reading_was_reset = true;
+		if (show_notice) {
+			portal.show_vmnp_notice?.(
+				__("Fuel Fill Up Reading cannot be less than Previous Fuel Fill Up Reading. The value has been reset to 0.")
+			);
+		}
+		return false;
+	}
+
+	function bind_guard(portal) {
+		const $form = portal.$view.find("[data-record-form]").first();
+		if (!$form.length) return;
+		const selector = `[data-control-field="${CURRENT_FIELD}"] input`;
+		$form.off(".vmnpDieselFuelFloor");
+		$form.on("input.vmnpDieselFuelFloor", selector, () => {
+			portal._vmnp_diesel_reading_was_reset = false;
+		});
+		$form.on("change.vmnpDieselFuelFloor blur.vmnpDieselFuelFloor", selector, () => {
+			if (portal._vmnp_diesel_reading_was_reset && numeric_value(portal, CURRENT_FIELD) === 0) return;
+			validate_fuel_reading(portal, true);
+		});
+	}
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (data?.key === KEY) bind_guard(this);
+		return result;
+	};
+
+	proto.save_form = function (data, submit) {
+		if (data?.key === KEY && !validate_fuel_reading(this, true)) return;
+		return previous_save_form.call(this, data, submit);
+	};
+})();
+
+/* VMNP list top-refresh clears filters/date only 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpListRefreshClearDateOnly) return;
+	window.__vmnpListRefreshClearDateOnly = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_refresh_current_view = proto.refresh_current_view;
+
+	proto.refresh_current_view = function () {
+		const view = this.current_view || {};
+		if (view.type !== "list") {
+			return previous_refresh_current_view.call(this);
+		}
+
+		this._master_cache = {};
+		this._vmnp_filters = {};
+		this._vmnp_filters_key = view.key;
+		this._vmnp_date_range = { from_date: "", to_date: "" };
+		this._vmnp_date_range_key = view.key;
+
+		return this.show_list(view.key, {
+			...view,
+			start: 0,
+			search: "",
+			filter_field: "",
+			filter_value: "",
+			filters: {},
+			date_range: { from_date: "", to_date: "" },
+		});
+	};
+})();
+
+
 
 /* VMNP standard Frappe Workflow UI 2026-08-10 */
 (() => {
@@ -1888,6 +2001,275 @@ class VehicleManagementPortal {
 		const result = await previous_show_list.call(this, key, options);
 		await refresh_list_workflow_states(this, key);
 		return result;
+	};
+})();
+
+/* VMNP DG Log-Details parity guard 2026-08-18 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpDgLogParityGuard) return;
+	window.__vmnpDgLogParityGuard = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_power_control_changed = proto.power_control_changed;
+	const previous_save_form = proto.save_form;
+	const KEY = "dg_operations";
+	const FIELDS = {
+		date: "dgd_date",
+		number: "dg_number",
+		start: "dg_start_reading",
+		end: "dg_end_reading",
+		total: "dg_total_dg_unit",
+		consumption: "dg_diesel_consumption",
+		start_time: "dg_start_time",
+		end_time: "dg_end_time",
+		total_hours: "dg_total_hours",
+	};
+	const previous_triggers = new Set(["dgd_dg_campus", "dg_location", "dg_type", FIELDS.number]);
+
+	function clean(value) {
+		return String(value ?? "").trim();
+	}
+
+	function field_input(portal, fieldname) {
+		const control = portal.controls?.[fieldname];
+		if (control?.$input?.length && !control.$input.is("select")) return control.$input.first();
+		return portal.$view.find(`[data-control-field="${fieldname}"] input, [data-control-field="${fieldname}"] textarea`).first();
+	}
+
+	function field_value(portal, fieldname) {
+		const $input = field_input(portal, fieldname);
+		if ($input.length) return clean($input.val());
+		try { return clean(portal.controls?.[fieldname]?.get_value?.()); } catch (error) { return ""; }
+	}
+
+	function number_value(value) {
+		const raw = clean(value).replace(/,/g, "");
+		if (!raw) return null;
+		const number = Number(raw);
+		return Number.isFinite(number) ? number : null;
+	}
+
+	function set_field(portal, fieldname, value) {
+		const next = value === null || value === undefined ? "" : String(value);
+		const control = portal.controls?.[fieldname];
+		const $input = field_input(portal, fieldname);
+		if ($input.length) $input.val(next).attr("value", next);
+		if (control) {
+			control.value = next;
+			try { control.set_value?.(next); } catch (error) {}
+		}
+	}
+
+	function lock_start(portal, locked) {
+		const $slot = portal.$view.find(`[data-control-field="${FIELDS.start}"]`);
+		const $input = $slot.find("input").first();
+		$input.prop("readonly", Boolean(locked)).attr("aria-readonly", locked ? "true" : "false");
+		$slot.toggleClass("is-locked-reading", Boolean(locked));
+		if (locked) $input.attr("title", __("Filled from this DG's previous End Reading"));
+		else $input.removeAttr("title");
+	}
+
+	function validate_readings(portal, show_notice = false) {
+		if (portal?._power_form_data?.key !== KEY) return true;
+		const start_raw = field_value(portal, FIELDS.start);
+		const end_raw = field_value(portal, FIELDS.end);
+		if (!start_raw || !end_raw) {
+			set_field(portal, FIELDS.total, 0);
+			set_field(portal, FIELDS.consumption, 0);
+			return true;
+		}
+
+		const start = number_value(start_raw);
+		const end = number_value(end_raw);
+		if (start === null || end === null || end < start) {
+			set_field(portal, FIELDS.end, "");
+			set_field(portal, FIELDS.total, 0);
+			set_field(portal, FIELDS.consumption, 0);
+			if (show_notice) {
+				portal.show_vmnp_notice?.(__("End Reading cannot be less than Start Reading. The invalid value was cleared."));
+			}
+			return false;
+		}
+
+		const units = Math.round((end - start) * 1000) / 1000;
+		set_field(portal, FIELDS.total, units);
+		set_field(portal, FIELDS.consumption, units);
+		return true;
+	}
+
+	function time_minutes(value) {
+		const matches = [...clean(value).matchAll(/(\d{1,2}):(\d{2})(?::\d{2})?/g)];
+		const match = matches[matches.length - 1];
+		return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+	}
+
+	function minutes_for(hour_12, period, minute) {
+		let hour = Number(hour_12) % 12;
+		if (period === "PM") hour += 12;
+		return hour * 60 + Number(minute);
+	}
+
+	function sync_time_combo($select) {
+		const option = $select.find("option:selected")[0];
+		const label = option ? option.textContent.trim() : "";
+		$select.next(".vmnp-combo").find(".vmnp-combo-text")
+			.text(label || __("Select"))
+			.toggleClass("is-placeholder", !option?.value);
+	}
+
+	proto.refresh_dg_time_constraints = function (show_notice = false) {
+		if (this._power_form_data?.key !== KEY) return true;
+		let start_text = "";
+		let end_text = "";
+		try { start_text = clean(this.controls?.[FIELDS.start_time]?.get_value?.()); } catch (error) {}
+		try { end_text = clean(this.controls?.[FIELDS.end_time]?.get_value?.()); } catch (error) {}
+		const start = time_minutes(start_text);
+		const end = time_minutes(end_text);
+		const $end = this.$view.find(`[data-control-field="${FIELDS.end_time}"]`);
+		const period = clean($end.find("[data-time-period]").val());
+		const hour = clean($end.find("[data-time-hour]").val());
+		const minute = String($end.find("[data-time-minute]").val() ?? "");
+
+		$end.find("[data-time-period] option[value]").each(function () {
+			if (!this.value || start === null) return $(this).prop("disabled", false);
+			if (hour && minute !== "") return $(this).prop("disabled", minutes_for(hour, this.value, minute) < start);
+			const maximum = this.value === "AM" ? 11 * 60 + 59 : 23 * 60 + 59;
+			$(this).prop("disabled", maximum < start);
+		});
+		$end.find("[data-time-hour] option[value]").each(function () {
+			if (!this.value || !period || start === null) return $(this).prop("disabled", false);
+			$(this).prop("disabled", minutes_for(this.value, period, minute !== "" ? minute : 59) < start);
+		});
+		$end.find("[data-time-minute] option[value]").each(function () {
+			if (this.value === "" || !period || !hour || start === null) return $(this).prop("disabled", false);
+			$(this).prop("disabled", minutes_for(hour, period, this.value) < start);
+		});
+
+		if (start !== null && end !== null && end < start) {
+			this.controls?.[FIELDS.end_time]?.set_value?.("");
+			$end.find("select").each((index, select) => sync_time_combo($(select)));
+			set_field(this, FIELDS.total_hours, 0);
+			if (show_notice) this.show_vmnp_notice?.(__("End Time must be after Start Time for the selected date."));
+			return false;
+		}
+
+		const hours = start !== null && end !== null ? Math.round(((end - start) / 60) * 100) / 100 : 0;
+		set_field(this, FIELDS.total_hours, hours);
+		return true;
+	};
+
+	async function sync_previous_start(portal, data) {
+		if (portal._power_form_data?.key !== KEY) return;
+		const dg_number = field_value(portal, FIELDS.number);
+		const token = `${dg_number}:${Date.now()}:${Math.random()}`;
+		portal._vmnp_dg_previous_lock_token = token;
+		lock_start(portal, false);
+		if (!dg_number) return;
+
+		try {
+			const filters = { [FIELDS.number]: dg_number };
+			if (data?.name) filters.name = ["!=", data.name];
+			const rows = await frappe.db.get_list("DG Details VMN", {
+				fields: ["name", FIELDS.end],
+				filters,
+				order_by: "creation desc",
+				limit: 1,
+			});
+			if (portal._vmnp_dg_previous_lock_token !== token) return;
+			const previous_end = rows?.[0]?.[FIELDS.end];
+			if (previous_end === null || previous_end === undefined || previous_end === "") {
+				lock_start(portal, false);
+				return;
+			}
+			set_field(portal, FIELDS.start, previous_end);
+			lock_start(portal, true);
+			validate_readings(portal, false);
+		} catch (error) {
+			lock_start(portal, false);
+		}
+	}
+
+	function remove_old_reading_handlers(portal) {
+		[
+			["_vmnp_dg_end_form", "_vmnp_dg_end_handler"],
+			["_vmnp_ultimate_form", "_vmnp_ultimate_handler"],
+			["_vmnp_final_reading_guard_form", "_vmnp_final_reading_guard_input"],
+			["_vmnp_numeric_reading_form", "_vmnp_numeric_reading_handler"],
+			["_vmnp_dg_final_form", "_vmnp_dg_final_handler"],
+		].forEach(([form_key, handler_key]) => {
+			const form = portal[form_key];
+			const handler = portal[handler_key];
+			if (!form || !handler) return;
+			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+				try { form.removeEventListener(event_name, handler, true); } catch (error) {}
+			});
+		});
+	}
+
+	function bind_form(portal, data) {
+		const form = portal.$view.find("[data-record-form]")[0];
+		if (!form) return;
+		remove_old_reading_handlers(portal);
+		if (portal._vmnp_dg_parity_form && portal._vmnp_dg_parity_handler) {
+			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+				try { portal._vmnp_dg_parity_form.removeEventListener(event_name, portal._vmnp_dg_parity_handler, true); } catch (error) {}
+			});
+		}
+
+		let timer = null;
+		portal._vmnp_dg_parity_form = form;
+		portal._vmnp_dg_parity_handler = (event) => {
+			const fieldname = $(event.target).closest("[data-control-field]").attr("data-control-field") || "";
+			if (![FIELDS.start, FIELDS.end].includes(fieldname)) return;
+			const old_value = String(event.target.value || "");
+			const next = old_value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+			if (old_value !== next) event.target.value = next;
+			event.stopImmediatePropagation();
+			event.stopPropagation();
+			window.clearTimeout(timer);
+			if (["input", "keyup"].includes(event.type)) {
+				timer = window.setTimeout(() => validate_readings(portal, false), 300);
+			} else {
+				validate_readings(portal, true);
+			}
+		};
+		["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+			form.addEventListener(event_name, portal._vmnp_dg_parity_handler, true);
+		});
+
+		portal.$view.find(`[data-control-field="${FIELDS.start}"] input, [data-control-field="${FIELDS.end}"] input`)
+			.attr("type", "text")
+			.attr("inputmode", "decimal");
+		[80, 250, 700].forEach((delay) => window.setTimeout(() => void sync_previous_start(portal, data), delay));
+		window.setTimeout(() => portal.refresh_dg_time_constraints(false), 120);
+	}
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (data?.key === KEY) {
+			this.enhance_selects?.();
+			bind_form(this, data);
+		}
+		return result;
+	};
+
+	proto.power_control_changed = function (key, fieldname) {
+		const result = previous_power_control_changed.call(this, key, fieldname);
+		if (key === KEY && previous_triggers.has(fieldname)) {
+			window.setTimeout(() => void sync_previous_start(this, this._power_form_data || {}), 100);
+		}
+		if (key === KEY && [FIELDS.start_time, FIELDS.end_time].includes(fieldname)) {
+			window.setTimeout(() => this.refresh_dg_time_constraints(true), 0);
+		}
+		return result;
+	};
+
+	proto.save_form = function (data, submit) {
+		if (data?.key === KEY) {
+			if (!validate_readings(this, true) || !this.refresh_dg_time_constraints(true)) return;
+		}
+		return previous_save_form.call(this, data, submit);
 	};
 })();
 
@@ -2656,7 +3038,8 @@ class VehicleManagementPortal {
 					seen.add(option_value);
 					const campus_name = String(row.cd_campus_name || "").trim() || option_value;
 					const location = String(row.cd_location || "").trim();
-					const label = location ? `${campus_name} — ${location}` : campus_name;
+					// const label = location ? `${campus_name} — ${location}` : campus_name;
+					const label = campus_name;
 					$select.append(new Option(label, option_value));
 				});
 				$select.val(String(selected_value || ""));
@@ -2821,7 +3204,9 @@ class VehicleManagementPortal {
 			})
 			.join("");
 
-		$toolbar.after(`<div class="vmnp-filter-row">${controls}</div>`);
+		$toolbar.after(`<div class="vmnp-filter-row">${controls}
+						<button class="vmnp-icon-button vmnp-clear-button" type="button" data-clear-list
+							title="${__("Clear filters")}">${this.icon("close")}</button></div>`);
 		this.load_filter_link_options(key);
 
 		const collect = () => {
@@ -3016,29 +3401,207 @@ class VehicleManagementPortal {
 	};
 
 	/** Us vehicle/DG ki pichhli entry ka End Reading -> naya Start Reading. */
-	proto.load_previous_reading = async function (key) {
-		const pair = reading_pairs[key];
-		const item = this.menu_items[key];
-		if (!pair || !item?.doctype) return;
+	// proto.load_previous_reading = async function (key) {
+	// 	const pair = reading_pairs[key];
+	// 	const item = this.menu_items[key];
+	// 	if (!pair || !item?.doctype) return;
 
-		const vehicle = this.control_value(pair.number);
-		if (!vehicle) return;
+	// 	const vehicle = this.control_value(pair.number);
+	// 	if (!vehicle) return;
 
-		try {
-			const rows = await frappe.db.get_list(item.doctype, {
-				filters: { [pair.number]: vehicle },
-				fields: [pair.end],
-				order_by: "creation desc",
-				limit: 1,
-			});
-			const previous = rows && rows.length ? rows[0][pair.end] : null;
-			if (previous == null || previous === "") return;
-			this.set_control_value(pair.start, previous);
-			this.calculate_power_app_fields(key);
-		} catch (error) {
-			// Pichhli entry na mile to Start Reading user khud bhar lega.
-		}
-	};
+	// 	try {
+	// 		const rows = await frappe.db.get_list(item.doctype, {
+	// 			filters: { [pair.number]: vehicle },
+	// 			fields: [pair.end],
+	// 			order_by: "creation desc",
+	// 			limit: 1,
+	// 		});
+	// 		const previous = rows && rows.length ? rows[0][pair.end] : null;
+	// 		if (previous == null || previous === "") return;
+	// 		this.set_control_value(pair.start, previous);
+	// 		this.calculate_power_app_fields(key);
+	// 	} catch (error) {
+	// 		// Pichhli entry na mile to Start Reading user khud bhar lega.
+	// 	}
+	// };
+
+    proto.load_previous_reading = async function (key) {
+    const pair = reading_pairs[key];
+
+    if (!pair) {
+        console.warn(
+            "[VMNP][PREVIOUS READING] Mapping not found:",
+            key
+        );
+        return;
+    }
+
+    const vehicle_number = String(
+        this.control_value(pair.number) || ""
+    ).trim();
+
+    console.log(
+        "[VMNP][PREVIOUS READING] Start",
+        {
+            key,
+            vehicle_number,
+            number_field: pair.number,
+            start_field: pair.start,
+            end_field: pair.end
+        }
+    );
+
+    if (!vehicle_number) {
+        console.warn(
+            "[VMNP][PREVIOUS READING] Vehicle/DG number blank"
+        );
+        return;
+    }
+
+    // Latest request ko track karo
+    const request_id =
+        `${key}:${vehicle_number}:${Date.now()}`;
+
+    this._vmnp_previous_reading_request = request_id;
+
+    try {
+        // IMPORTANT:
+        // portal.api() nahi use kar rahe,
+        // kyunki us par list/date-filter overrides lage hue hain.
+        const response = await frappe.call({
+            method:
+                "vehicle_management_nagpur.vehicle_management_nagpur.page.vehicle_management.vehicle_management_powerapp_v4.get_document_list",
+
+            args: {
+                key: key,
+                start: 0,
+                page_length: 1,
+                search: "",
+                filter_field: pair.number,
+                filter_value: vehicle_number,
+                sort_by: "creation",
+                sort_order: "desc"
+            }
+        });
+
+        const result = response?.message || {};
+        const rows = result?.rows || [];
+
+        console.log(
+            "[VMNP][PREVIOUS READING] API result:",
+            result
+        );
+
+        // Agar user ne request ke beech vehicle change kar diya
+        if (
+            this._vmnp_previous_reading_request !== request_id
+        ) {
+            console.warn(
+                "[VMNP][PREVIOUS READING] Old request ignored"
+            );
+            return;
+        }
+
+        if (!rows.length) {
+            console.warn(
+                "[VMNP][PREVIOUS READING] Previous record not found:",
+                vehicle_number
+            );
+            return;
+        }
+
+        const row = rows[0];
+
+        console.log(
+            "[VMNP][PREVIOUS READING] Previous record:",
+            row
+        );
+
+        // Safety check:
+        // Same vehicle hi hona chahiye
+        const returned_number = String(
+            row[pair.number] || ""
+        ).trim();
+
+        if (returned_number !== vehicle_number) {
+            console.error(
+                "[VMNP][PREVIOUS READING] WRONG VEHICLE RETURNED",
+                {
+                    requested: vehicle_number,
+                    returned: returned_number,
+                    row
+                }
+            );
+            return;
+        }
+
+        const previous_end = row[pair.end];
+
+        console.log(
+            "[VMNP][PREVIOUS READING] Previous End Reading:",
+            previous_end
+        );
+
+        if (
+            previous_end === null ||
+            previous_end === undefined ||
+            previous_end === ""
+        ) {
+            console.warn(
+                "[VMNP][PREVIOUS READING] Previous End Reading blank"
+            );
+            return;
+        }
+
+        console.log(
+            "[VMNP][PREVIOUS READING] Setting Start Reading:",
+            previous_end
+        );
+
+        // Start Reading set
+        this.set_control_value(
+            pair.start,
+            previous_end
+        );
+
+        // set_value async/control refresh ho sakta hai,
+        // isliye delayed verification
+        setTimeout(() => {
+            console.log(
+                "[VMNP][PREVIOUS READING] Start Reading after 300ms:",
+                this.control_value(pair.start)
+            );
+
+            console.log(
+                "[VMNP][PREVIOUS READING] DOM value:",
+                this.$view
+                    .find(
+                        `[data-control-field="${pair.start}"] input`
+                    )
+                    .val()
+            );
+        }, 300);
+
+        // Calculation update
+        if (
+            typeof this.calculate_power_app_fields ===
+            "function"
+        ) {
+            this.calculate_power_app_fields(key);
+        }
+
+    } catch (error) {
+        console.error(
+            "[VMNP][PREVIOUS READING] ERROR:",
+            {
+                key,
+                vehicle_number,
+                error
+            }
+        );
+    }
+};
+
 })();
 
 /**
@@ -4998,7 +5561,7 @@ class VehicleManagementPortal {
  * 2. Maintenance ka Vendor Name — Frappe Link + awesomplete ki jagah wahi
  *    native select jaisa baaki dropdowns hain.
  *
- * 3. Total Repairing Amount se read-only hataya.
+ * 3. Total Repairing Amount ko doctype ke read-only mode me rehne diya.
  */
 (() => {
 	const proto = VehicleManagementPortal.prototype;
@@ -5010,7 +5573,7 @@ class VehicleManagementPortal {
 		md_vendor_name: { doctype: "Vendor Details VMN", label_field: "vendor_name" },
 	};
 
-	const EDITABLE = ["md_total_repairingamount"];
+	const EDITABLE = [];
 
 	proto.make_control = function ($slot, field, value) {
 		const config = LOOKUPS[field.fieldname];
@@ -5094,7 +5657,7 @@ class VehicleManagementPortal {
 		previous_render_form.call(this, data);
 		void this.load_lookup_select_options(data);
 
-		// Amount user khud bhar sake.
+		// Koi extra field force-editable nahi hai.
 		EDITABLE.forEach((fieldname) => {
 			this.$view
 				.find(`[data-control-field="${fieldname}"]`)
@@ -5115,7 +5678,7 @@ class VehicleManagementPortal {
 	const proto = VehicleManagementPortal.prototype;
 	const previous_make_control = proto.make_control;
 
-	const FORCE_EDITABLE = new Set(["md_total_repairingamount"]);
+	const FORCE_EDITABLE = new Set([]);
 
 	proto.make_control = function ($slot, field, value) {
 		if (FORCE_EDITABLE.has(field.fieldname) && field.read_only) {
@@ -6171,16 +6734,10 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 			const items = $select
 				.find("option")
 				.toArray()
-				.filter((option) => option.value)
+				.filter((option) => option.value && !option.disabled)
 				.filter((option) => !needle || option.textContent.toLowerCase().includes(needle));
 
 			$list.empty();
-			// Har dropdown me ek true blank row: user select kare to value clear ho jaye.
-			$("<li>")
-				.attr({ role: "option", "data-value": "" })
-				.toggleClass("is-selected", !$select.val())
-				.html("&nbsp;")
-				.appendTo($list);
 			if (!items.length) {
 				$list.append(`<li class="vmnp-combo-empty">${__("No match")}</li>`);
 			} else {
@@ -7013,6 +7570,29 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 			set_field(portal, mapping.type, details.vd_type_of_vehicle || portal.control_value(mapping.type) || "");
 			set_field(portal, mapping.name, details.vd_vehicle_name || "");
 			set_field(portal, mapping.location, details.vd_location || "");
+			if (key === "vehicle_logs") {
+				const previous = await frappe.call({
+					method: "vehicle_management_nagpur.vehicle_management_nagpur.page.vehicle_management.vehicle_management_powerapp_v4.get_document_list",
+					args: {
+						key,
+						start: 0,
+						page_length: 1,
+						search: "",
+						filter_field: mapping.number,
+						filter_value: vehicle_number,
+						sort_by: "creation",
+						sort_order: "desc",
+					},
+				});
+				if (portal._vmnp_clear_vehicle_token !== token) return;
+				const previous_end = previous?.message?.rows?.[0]?.end_reading;
+				if (previous_end !== null && previous_end !== undefined && previous_end !== "") {
+					set_field(portal, "start_reading", previous_end);
+					if (typeof portal.calculate_power_app_fields === "function") {
+						portal.calculate_power_app_fields(key);
+					}
+				}
+			}
 			if (mapping.campus && typeof portal.load_campus_options === "function") {
 				void portal.load_campus_options(mapping.campus, "");
 			}
@@ -7096,7 +7676,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 			this._vmnp_clear_vehicle_token = token;
 			clear_dependent_fields(this, key, mapping);
 			void refill_vehicle_details(this, key, mapping, current_vehicle_number, token);
-			return;
+			return previous_power_control_changed.call(this, key, fieldname);
 		}
 
 		if (restore_blank_select_click(this, fieldname)) return;
@@ -7146,6 +7726,42 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		if (!$select.length || $select.prop("disabled")) return;
 
 		const value = String($option.attr("data-value") ?? "");
+		const $time = $combo.closest('[data-time-field="end_time"], [data-time-field="dg_end_time"]');
+		if ($time.length) {
+			const portal = VehicleManagementPortal._instance;
+			const end_field = String($time.attr("data-time-field") || "end_time");
+			const start_field = end_field === "dg_end_time" ? "dg_start_time" : "start_time";
+			const candidate = {
+				hour: String($time.find("[data-time-hour]").val() || ""),
+				minute: String($time.find("[data-time-minute]").val() || ""),
+				period: String($time.find("[data-time-period]").val() || ""),
+			};
+			if ($select.is("[data-time-hour]")) candidate.hour = value;
+			if ($select.is("[data-time-minute]")) candidate.minute = value;
+			if ($select.is("[data-time-period]")) candidate.period = value;
+
+			const $start = portal?.$view?.find(`[data-time-field="${start_field}"]`);
+			const start_parts = {
+				hour: String($start?.find("[data-time-hour]").val() || ""),
+				minute: String($start?.find("[data-time-minute]").val() || ""),
+				period: String($start?.find("[data-time-period]").val() || ""),
+			};
+			const minutes = (parts) => {
+				if (!parts.hour || parts.minute === "" || !parts.period) return null;
+				let hour = Number(parts.hour) % 12;
+				if (parts.period === "PM") hour += 12;
+				return hour * 60 + Number(parts.minute);
+			};
+			const start_minutes = minutes(start_parts);
+			const end_minutes = minutes(candidate);
+			if (start_minutes !== null && end_minutes !== null && end_minutes < start_minutes) {
+				portal?.show_vmnp_notice?.(__("End Time must be after Start Time. Choose a later time."));
+				$combo.removeClass("is-open");
+				$combo.find(".vmnp-combo-panel").attr("hidden", true);
+				$combo.find(".vmnp-combo-search").val("");
+				return;
+			}
+		}
 		$select.val(value).trigger("change");
 		const selected = $select.find("option:selected")[0];
 		const label = selected ? selected.textContent.trim() : "";
@@ -9560,9 +10176,1568 @@ proto.save_form = async function (data, submit) {
 		}, 900);
 	}
 
-	proto.render_detail = function (data) {
+proto.render_detail = function (data) {
 		const result = previous_render_detail.call(this, data);
 		refresh_workflow_actions(this, data);
+		return result;
+	};
+})();
+
+/* VMNP diesel edit saved fuel values guard 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpDieselEditSavedFuelGuard) return;
+	window.__vmnpDieselEditSavedFuelGuard = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_load_previous_fuel_reading = proto.load_previous_fuel_reading;
+
+	const KEY = "fuel_diesel";
+	const PREVIOUS_FIELD = "dd_previous_fuel_fill_up_reading";
+	const AVERAGE_FIELD = "dd_average";
+
+	function saved_value(data, fieldname) {
+		return data?.values && Object.prototype.hasOwnProperty.call(data.values, fieldname)
+			? data.values[fieldname]
+			: undefined;
+	}
+
+	function set_silent(portal, fieldname, value) {
+		if (!portal.controls?.[fieldname]) return;
+		if (typeof portal.vmnp_set_calculated_field_silent === "function") {
+			portal.vmnp_set_calculated_field_silent(fieldname, value);
+			return;
+		}
+		portal.set_control_value(fieldname, value);
+	}
+
+	function restore_saved(portal, data) {
+		if (!portal || !data || data.key !== KEY || data.is_new) return;
+		[PREVIOUS_FIELD, AVERAGE_FIELD].forEach((fieldname) => {
+			const value = saved_value(data, fieldname);
+			if (value !== undefined && value !== null) set_silent(portal, fieldname, value);
+		});
+	}
+
+	proto.load_previous_fuel_reading = function (exclude_name = null, force = false) {
+		if (this._power_form_data?.key === KEY && !this._power_form_data?.is_new) return Promise.resolve();
+		if (typeof previous_load_previous_fuel_reading !== "function") return Promise.resolve();
+		return previous_load_previous_fuel_reading.call(this, exclude_name, force);
+	};
+
+proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (data?.key === KEY && !data.is_new) {
+			restore_saved(this, data);
+			setTimeout(() => restore_saved(this, data), 300);
+			setTimeout(() => restore_saved(this, data), 900);
+		}
+		return result;
+	};
+})();
+
+/* VMNP diesel previous + DG reading ultimate guard 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpFuelDgUltimateGuard) return;
+	window.__vmnpFuelDgUltimateGuard = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_power_control_changed = proto.power_control_changed;
+	const previous_calculate = proto.calculate_power_app_fields;
+	const previous_save_form = proto.save_form;
+
+	const FUEL_KEY = "fuel_diesel";
+	const DG_KEY = "dg_operations";
+	const FUEL_FIELDS = {
+		number: "dd_vehicle_number",
+		current: "dd_fuel_fill_up_reading",
+		previous: "dd_previous_fuel_fill_up_reading",
+		quantity: "dd_quantity",
+		average: "dd_average",
+	};
+	const DG_FIELDS = {
+		start: "dg_start_reading",
+		end: "dg_end_reading",
+		total: "dg_total_dg_unit",
+		consumption: "dg_diesel_consumption",
+	};
+
+	function input(portal, fieldname) {
+		const control = portal.controls && portal.controls[fieldname];
+		if (control?.$input?.length) return control.$input;
+		return portal.$view.find(`[data-control-field="${fieldname}"] input, [data-control-field="${fieldname}"] textarea`);
+	}
+
+	function raw(portal, fieldname) {
+		const $input = input(portal, fieldname);
+		if ($input.length) return String($input.val() ?? "").trim();
+		const control = portal.controls && portal.controls[fieldname];
+		return typeof control?.get_value === "function" ? String(control.get_value() ?? "").trim() : "";
+	}
+
+	function number(value) {
+		const text = String(value ?? "").replace(/,/g, "").trim();
+		if (!text) return null;
+		const parsed = Number(text);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+
+	function set_value(portal, fieldname, value) {
+		const next = value === null || value === undefined ? "" : String(value);
+		const $input = input(portal, fieldname);
+		if ($input.length) $input.val(next).attr("value", next);
+		const control = portal.controls && portal.controls[fieldname];
+		if (!control) return;
+		control.value = next;
+		if (typeof control.set_value === "function") {
+			try { control.set_value(next); } catch (error) {}
+		}
+	}
+
+	function clean_numeric_event(event) {
+		const fieldname = $(event.target).closest("[data-control-field]").attr("data-control-field") || "";
+		const numeric_fields = new Set([
+			FUEL_FIELDS.current,
+			FUEL_FIELDS.previous,
+			FUEL_FIELDS.quantity,
+			DG_FIELDS.start,
+			DG_FIELDS.end,
+		]);
+		if (!numeric_fields.has(fieldname)) return;
+		const old_value = String(event.target.value || "");
+		const next = old_value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+		if (old_value !== next) event.target.value = next;
+	}
+
+	async function fetch_previous_fuel(portal, exclude_name = null) {
+		const vehicle = raw(portal, FUEL_FIELDS.number);
+		if (!vehicle) return null;
+		const filters = { [FUEL_FIELDS.number]: vehicle };
+		if (exclude_name) filters.name = ["!=", exclude_name];
+		const rows = await frappe.db.get_list("Diesel Details VMN", {
+			fields: [FUEL_FIELDS.current],
+			filters,
+			order_by: "dd_date desc, creation desc",
+			limit: 1,
+		});
+		const value = rows?.[0]?.[FUEL_FIELDS.current];
+		return value === undefined || value === null || value === "" ? null : value;
+	}
+
+	function calculate_fuel(portal, keep_saved_average = false, data = null) {
+		const fill = number(raw(portal, FUEL_FIELDS.current));
+		const previous = number(raw(portal, FUEL_FIELDS.previous)) || 0;
+		const quantity = number(raw(portal, FUEL_FIELDS.quantity));
+		const saved_average = data?.values?.[FUEL_FIELDS.average];
+		const should_keep_saved_average =
+			(keep_saved_average || Boolean(data && !data.is_new)) &&
+			saved_average !== undefined &&
+			saved_average !== null &&
+			saved_average !== "";
+		if (fill === null || !quantity) {
+			if (should_keep_saved_average) {
+				set_value(portal, FUEL_FIELDS.average, saved_average);
+				return;
+			}
+			if (!keep_saved_average) set_value(portal, FUEL_FIELDS.average, "");
+			return;
+		}
+		const travelled = fill - previous;
+		if (travelled < 0) {
+			if (should_keep_saved_average) {
+				set_value(portal, FUEL_FIELDS.average, saved_average);
+				return;
+			}
+			set_value(portal, FUEL_FIELDS.average, "");
+			return;
+		}
+		set_value(portal, FUEL_FIELDS.average, Math.round((travelled / quantity) * 100) / 100);
+	}
+
+	async function ensure_previous_fuel(portal, data = null, force = false) {
+		if (!portal || portal._power_form_data?.key !== FUEL_KEY) return;
+		const control = portal.controls?.[FUEL_FIELDS.previous];
+		if (!control) return;
+		const current = raw(portal, FUEL_FIELDS.previous);
+		const saved = data?.values?.[FUEL_FIELDS.previous];
+		if (!force && current && Number(current) !== 0) {
+			calculate_fuel(portal, Boolean(data && !data.is_new), data);
+			return;
+		}
+		const previous = await fetch_previous_fuel(portal, data?.is_new ? null : data?.name);
+		if (previous !== null) {
+			set_value(portal, FUEL_FIELDS.previous, previous);
+		} else if (saved !== undefined && saved !== null) {
+			set_value(portal, FUEL_FIELDS.previous, saved);
+		}
+		if (data && !data.is_new && data.values?.[FUEL_FIELDS.average] !== undefined && data.values?.[FUEL_FIELDS.average] !== null) {
+			set_value(portal, FUEL_FIELDS.average, data.values[FUEL_FIELDS.average]);
+		} else {
+			calculate_fuel(portal, false, data);
+		}
+	}
+
+	function calculate_dg(portal) {
+		if (!portal || portal._power_form_data?.key !== DG_KEY) return;
+		const start = number(raw(portal, DG_FIELDS.start));
+		const end = number(raw(portal, DG_FIELDS.end));
+		if (start === null || end === null || end < start) {
+			set_value(portal, DG_FIELDS.total, 0);
+			set_value(portal, DG_FIELDS.consumption, 0);
+			return;
+		}
+		const units = Math.round((end - start) * 1000) / 1000;
+		set_value(portal, DG_FIELDS.total, units);
+		set_value(portal, DG_FIELDS.consumption, units);
+	}
+
+	function bind_form(portal, data) {
+		const form = portal.$view.find("[data-record-form]")[0];
+		if (!form) return;
+		if (portal._vmnp_ultimate_form && portal._vmnp_ultimate_handler) {
+			["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+				try { portal._vmnp_ultimate_form.removeEventListener(event_name, portal._vmnp_ultimate_handler, true); } catch (error) {}
+			});
+		}
+		portal._vmnp_ultimate_form = form;
+		portal._vmnp_ultimate_handler = (event) => {
+			const fieldname = $(event.target).closest("[data-control-field]").attr("data-control-field") || "";
+			clean_numeric_event(event);
+			if (data.key === DG_KEY && [DG_FIELDS.start, DG_FIELDS.end].includes(fieldname)) {
+				event.stopImmediatePropagation();
+				setTimeout(() => calculate_dg(portal), event.type === "input" || event.type === "keyup" ? 250 : 0);
+			}
+		};
+		["input", "change", "keyup", "blur", "focusout"].forEach((event_name) => {
+			form.addEventListener(event_name, portal._vmnp_ultimate_handler, true);
+		});
+
+		const $form = $(form);
+		$form.off(".vmnpFuelDgUltimate");
+		if (data.key === FUEL_KEY) {
+			$form.on("change.vmnpFuelDgUltimate blur.vmnpFuelDgUltimate", "input, select", () => {
+				setTimeout(() => calculate_fuel(portal, false, data), 0);
+			});
+			[0, 250, 700, 1300].forEach((delay) => {
+				setTimeout(() => void ensure_previous_fuel(portal, data, false), delay);
+			});
+		}
+		if (data.key === DG_KEY) {
+			$form.find(`[data-control-field="${DG_FIELDS.start}"] input, [data-control-field="${DG_FIELDS.end}"] input`)
+				.attr("type", "text")
+				.attr("inputmode", "decimal");
+			[0, 250, 700, 1300].forEach((delay) => setTimeout(() => calculate_dg(portal), delay));
+		}
+	}
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (data?.key === FUEL_KEY || data?.key === DG_KEY) bind_form(this, data);
+		return result;
+	};
+
+	proto.power_control_changed = function (key, fieldname) {
+		if (key === FUEL_KEY && [FUEL_FIELDS.number, FUEL_FIELDS.current, FUEL_FIELDS.previous, FUEL_FIELDS.quantity].includes(fieldname)) {
+			let result;
+			if (fieldname === FUEL_FIELDS.number) {
+				result = previous_power_control_changed.call(this, key, fieldname);
+				void ensure_previous_fuel(this, this._power_form_data, true);
+			}
+			calculate_fuel(this, false, this._power_form_data);
+			return result;
+		}
+		if (key === DG_KEY && [DG_FIELDS.start, DG_FIELDS.end].includes(fieldname)) {
+			calculate_dg(this);
+			return;
+		}
+		return previous_power_control_changed.call(this, key, fieldname);
+	};
+
+	//--------------------------------------------------------------------------------------
+
+// 	proto.power_control_changed = function (key, fieldname) {
+
+//     // DIESEL
+//     if (
+//         key === FUEL_KEY &&
+//         [
+//             FUEL_FIELDS.number,
+//             FUEL_FIELDS.current,
+//             FUEL_FIELDS.previous,
+//             FUEL_FIELDS.quantity
+//         ].includes(fieldname)
+//     ) {
+//         let result;
+
+//         // Vehicle Number change par old vehicle autofill chain bhi chalne do
+//         if (fieldname === FUEL_FIELDS.number) {
+//             result = previous_power_control_changed.call(
+//                 this,
+//                 key,
+//                 fieldname
+//             );
+
+//             void ensure_previous_fuel(
+//                 this,
+//                 this._power_form_data,
+//                 true
+//             );
+//         }
+
+//         calculate_fuel(
+//             this,
+//             false,
+//             this._power_form_data
+//         );
+
+//         return result;
+//     }
+
+//     // DG
+//     if (
+//         key === DG_KEY &&
+//         [DG_FIELDS.start, DG_FIELDS.end].includes(fieldname)
+//     ) {
+//         calculate_dg(this);
+//         return;
+//     }
+
+//     return previous_power_control_changed.call(
+//         this,
+//         key,
+//         fieldname
+//     );
+// };
+
+	//--------------------------------------------------------------------------------------
+
+	proto.calculate_power_app_fields = function (key) {
+		if (key === FUEL_KEY) {
+			calculate_fuel(this, false, this._power_form_data);
+			return;
+		}
+		if (key === DG_KEY) {
+			calculate_dg(this);
+			return;
+		}
+		return previous_calculate.call(this, key);
+	};
+
+	proto.save_form = async function (data, submit) {
+		if (data?.key === FUEL_KEY) await ensure_previous_fuel(this, data, false);
+		if (data?.key === DG_KEY) calculate_dg(this);
+		return previous_save_form.call(this, data, submit);
+	};
+})();
+
+/* VMNP diesel previous detail display guard 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpDieselPreviousDetailGuard) return;
+	window.__vmnpDieselPreviousDetailGuard = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_detail = proto.render_detail;
+
+	const KEY = "fuel_diesel";
+	const NUMBER_FIELD = "dd_vehicle_number";
+	const PREVIOUS_FIELD = "dd_previous_fuel_fill_up_reading";
+	const CURRENT_FIELD = "dd_fuel_fill_up_reading";
+
+	async function fetch_previous(data) {
+		const vehicle = String(data?.values?.[NUMBER_FIELD] || "").trim();
+		if (!vehicle) return null;
+		const filters = { [NUMBER_FIELD]: vehicle };
+		if (data?.name) filters.name = ["!=", data.name];
+		const rows = await frappe.db.get_list("Diesel Details VMN", {
+			fields: [CURRENT_FIELD],
+			filters,
+			order_by: "dd_date desc, creation desc",
+			limit: 1,
+		});
+		const value = rows?.[0]?.[CURRENT_FIELD];
+		return value === undefined || value === null || value === "" ? null : value;
+	}
+
+	async function update_previous(portal, data) {
+		if (!portal || data?.key !== KEY) return;
+		const current = data?.values?.[PREVIOUS_FIELD];
+		if (current !== undefined && current !== null && current !== "" && Number(current) !== 0) return;
+		const previous = await fetch_previous(data);
+		if (previous === null) return;
+		const $field = portal.$view.find(`[data-fieldname="${PREVIOUS_FIELD}"] strong`).first();
+		if ($field.length) $field.text(String(previous));
+	}
+
+	proto.render_detail = function (data) {
+		const result = previous_render_detail.call(this, data);
+		void update_previous(this, data);
+		setTimeout(() => void update_previous(this, data), 400);
+		return result;
+	};
+})();
+
+/* VMNP workflow badge inside detail/form headings 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpWorkflowBadgeInFormGuard) return;
+	window.__vmnpWorkflowBadgeInFormGuard = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_detail = proto.render_detail;
+	const previous_render_form = proto.render_form;
+
+	function state_from(data) {
+		return String(data?.approval_state || data?.values?.workflow_state || "").trim();
+	}
+
+	function badge_html(portal, state) {
+		if (typeof portal.approval_badge === "function") {
+			return portal.approval_badge({ approval_state: state });
+		}
+		return `<span class="vmnp-status draft" data-approval-status><i></i>${frappe.utils.escape_html(__(state))}</span>`;
+	}
+
+	function ensure_badge(portal, data) {
+		const state = state_from(data);
+		if (!portal || !state) return;
+		const $heading = portal.$view.find(".vmnp-page-heading").first();
+		if (!$heading.length) return;
+		let $actions = $heading.find(".vmnp-heading-actions").first();
+		if (!$actions.length) {
+			$actions = $('<div class="vmnp-heading-actions vmnp-workflow-badge-slot"></div>').appendTo($heading);
+		}
+		$actions.find(".vmnp-status, [data-approval-status]").remove();
+		$actions.prepend(badge_html(portal, state));
+	}
+
+	proto.render_detail = function (data) {
+		const result = previous_render_detail.call(this, data);
+		ensure_badge(this, data);
+		setTimeout(() => ensure_badge(this, data), 300);
+		return result;
+	};
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		ensure_badge(this, data);
+		setTimeout(() => ensure_badge(this, data), 300);
+		return result;
+	};
+})();
+
+/* VMNP edit saved select/average restore 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpEditSavedSelectAverageRestore) return;
+	window.__vmnpEditSavedSelectAverageRestore = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const FORCE_FIELDS = new Set(["dd_select_campus", "dd_average"]);
+
+	function saved_value(data, fieldname) {
+		const values = data?.values || {};
+		return Object.prototype.hasOwnProperty.call(values, fieldname) ? values[fieldname] : undefined;
+	}
+
+	function has_value(value) {
+		return value !== undefined && value !== null && value !== "";
+	}
+
+	function ensure_option($select, value) {
+		const next = String(value ?? "");
+		if (!$select?.length || !next) return;
+		const exists = $select
+			.find("option")
+			.toArray()
+			.some((option) => option.value === next);
+		if (!exists) $select.append(new Option(next, next));
+	}
+
+	function sync_combo($select) {
+		if (!$select?.length) return;
+		const option = $select.find("option:selected")[0];
+		const label = option && option.value ? option.textContent.trim() : "";
+		const $combo = $select.next(".vmnp-combo");
+		if ($combo.length) {
+			$combo.find(".vmnp-combo-text").text(label || __("Select")).toggleClass("is-placeholder", !label);
+			$combo.find(".vmnp-combo-input").val(label);
+		}
+	}
+
+	function field_meta(data, fieldname) {
+		for (const section of data?.sections || []) {
+			const field = (section.fields || []).find((candidate) => candidate.fieldname === fieldname);
+			if (field) return field;
+		}
+		return null;
+	}
+
+	function should_restore(data, fieldname) {
+		if (FORCE_FIELDS.has(fieldname)) return true;
+		const field = field_meta(data, fieldname);
+		return ["Select", "Link", "Dynamic Link"].includes(field?.fieldtype);
+	}
+
+	function put_value(portal, fieldname, value) {
+		if (!has_value(value)) return;
+		const next = String(value);
+		const control = portal.controls?.[fieldname];
+		const $field = portal.$view.find(`[data-control-field="${fieldname}"]`).first();
+		let $select = $();
+
+		if (control?.$input?.length) {
+			if (control.$input.is("select")) {
+				$select = control.$input;
+				ensure_option($select, next);
+				$select.val(next);
+				sync_combo($select);
+			} else {
+				control.$input.val(next).attr("value", next);
+			}
+			control.value = next;
+		}
+
+		if ($field.length) {
+			$field.find("select").each(function () {
+				const $current = $(this);
+				ensure_option($current, next);
+				$current.val(next);
+				sync_combo($current);
+				$select = $current;
+			});
+			if (!$select.length) {
+				$field.find("input, textarea").first().val(next).attr("value", next);
+			}
+		}
+
+		if (typeof control?.set_value === "function") {
+			try { control.set_value(next); } catch (error) {}
+			if (control.$input?.is?.("select")) sync_combo(control.$input);
+		}
+	}
+
+	function restore(portal, data) {
+		if (!portal || !data || data.is_new) return;
+		const values = data.values || {};
+		Object.keys(values).forEach((fieldname) => {
+			if (!should_restore(data, fieldname)) return;
+			put_value(portal, fieldname, saved_value(data, fieldname));
+		});
+	}
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (!data || data.is_new) return result;
+		[0, 80, 250, 600, 1200, 2000].forEach((delay) => {
+			window.setTimeout(() => restore(this, data), delay);
+		});
+		return result;
+	};
+})();
+
+/* VMNP edit form value hold final 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpEditFormValueHoldFinal) return;
+	window.__vmnpEditFormValueHoldFinal = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_load_campus_options = proto.load_campus_options;
+	const previous_load_vehicle_number_options = proto.load_vehicle_number_options;
+	const previous_power_control_changed = proto.power_control_changed;
+	const previous_set_control_value = proto.set_control_value;
+	const FORCE_RESTORE = new Set([
+		"vehicle_number",
+		"ld_vehicle_name",
+		"ld_vehicle_location",
+		"dd_vehicle_number",
+		"dd_vehicle_name",
+		"dd_vehicle_location",
+		"dd_select_campus",
+		"dd_average",
+		"dd_previous_fuel_fill_up_reading",
+		"md_vehicle_number",
+		"md_vehicle_name",
+		"md_vehicle_location",
+		"md_select_campus",
+		"rto_vehicle_number",
+		"rto_vehicle_name",
+		"rto_vehicle_location",
+		"rto_select_campus",
+		"rto_supervisor_name",
+		"document_type",
+	]);
+	const KEY_VEHICLE_NUMBER = {
+		vehicle_logs: "vehicle_number",
+		fuel_diesel: "dd_vehicle_number",
+		maintenance: "md_vehicle_number",
+		rto_compliance: "rto_vehicle_number",
+	};
+	const VEHICLE_DEPENDENT_NUMBER = {
+		ld_vehicle_name: "vehicle_number",
+		ld_vehicle_location: "vehicle_number",
+		dd_vehicle_name: "dd_vehicle_number",
+		dd_vehicle_location: "dd_vehicle_number",
+		md_vehicle_name: "md_vehicle_number",
+		md_vehicle_location: "md_vehicle_number",
+		rto_vehicle_name: "rto_vehicle_number",
+		rto_vehicle_location: "rto_vehicle_number",
+	};
+	const VEHICLE_NUMBER_FIELDS = new Set(Object.values(VEHICLE_DEPENDENT_NUMBER));
+
+	function has_value(value) {
+		return value !== undefined && value !== null && value !== "";
+	}
+
+	function current_edit_data(portal) {
+		const data = portal?._vmnp_edit_form_value_data;
+		if (!data || data.is_new) return null;
+		return data;
+	}
+
+	function saved_value(data, fieldname) {
+		const values = data?.values || {};
+		return Object.prototype.hasOwnProperty.call(values, fieldname) ? values[fieldname] : undefined;
+	}
+
+	function field_meta(data, fieldname) {
+		for (const section of data?.sections || []) {
+			const field = (section.fields || []).find((candidate) => candidate.fieldname === fieldname);
+			if (field) return field;
+		}
+		return null;
+	}
+
+	function is_choice_field(data, fieldname) {
+		const field = field_meta(data, fieldname);
+		return ["Select", "Link", "Dynamic Link"].includes(field?.fieldtype);
+	}
+
+	function combo_for($select) {
+		const $next = $select.next(".vmnp-combo");
+		return $next.length ? $next : $select.siblings(".vmnp-combo").first();
+	}
+
+	function sync_combo($select) {
+		if (!$select?.length) return;
+		const option = $select.find("option:selected")[0];
+		const label = option && option.value ? option.textContent.trim() : "";
+		const $combo = combo_for($select);
+		if (!$combo.length) return;
+		$combo.find(".vmnp-combo-text").text(label || __("Select")).toggleClass("is-placeholder", !label);
+		$combo.find(".vmnp-combo-input").each(function () {
+			if (!$(this).is(":focus")) $(this).val(label);
+		});
+		$combo.find(".vmnp-combo-search").each(function () {
+			if (!$(this).is(":focus")) $(this).val("");
+		});
+	}
+
+	function ensure_option($select, value) {
+		const next = String(value ?? "");
+		if (!$select?.length || !next) return;
+		const exists = $select
+			.find("option")
+			.toArray()
+			.some((option) => option.value === next);
+		if (!exists) $select.append(new Option(next, next));
+	}
+
+	function raw_field_value(portal, fieldname) {
+		const control = portal.controls?.[fieldname];
+		if (typeof control?.get_value === "function") {
+			try { return control.get_value(); } catch (error) {}
+		}
+		if (control?.$input?.length) return control.$input.val();
+		const $field = portal.$view.find(`[data-control-field="${fieldname}"]`).first();
+		return $field.find("select, input, textarea").first().val();
+	}
+
+	function put_value(portal, data, fieldname, value) {
+		if (!has_value(value)) return;
+		const next = String(value);
+		const choice = is_choice_field(data, fieldname);
+		const forced = FORCE_RESTORE.has(fieldname);
+		const current = raw_field_value(portal, fieldname);
+		const number_field = VEHICLE_DEPENDENT_NUMBER[fieldname];
+		if (number_field) {
+			const saved_number = saved_value(data, number_field);
+			const current_number = raw_field_value(portal, number_field);
+			const user_touched_number = Boolean(portal._vmnp_user_touched_vehicle_number?.[number_field]);
+			if (
+				user_touched_number &&
+				has_value(saved_number) &&
+				has_value(current_number) &&
+				String(current_number) !== String(saved_number)
+			) {
+				return;
+			}
+		}
+		if (!choice && !forced && has_value(current) && String(current) !== next) return;
+
+		const control = portal.controls?.[fieldname];
+		if (control?.$input?.length) {
+			if (control.$input.is("select")) {
+				ensure_option(control.$input, next);
+				control.$input.val(next);
+				sync_combo(control.$input);
+			} else {
+				control.$input.val(next).attr("value", next);
+			}
+			control.value = next;
+		}
+		if (typeof control?.set_value === "function") {
+			try { control.set_value(next); } catch (error) {}
+		}
+
+		const $field = portal.$view.find(`[data-control-field="${fieldname}"]`).first();
+		if ($field.length) {
+			const $selects = $field.find("select");
+			if ($selects.length) {
+				$selects.each(function () {
+					const $select = $(this);
+					ensure_option($select, next);
+					$select.val(next);
+					sync_combo($select);
+				});
+			} else {
+				const $input = $field.find("input, textarea").first();
+				if ($input.length) $input.val(next).attr("value", next);
+			}
+			$field.find(".control-value, .like-disabled-input, .form-control-static, [data-display-value]").each(function () {
+				$(this).text(next).attr("data-display-value", next);
+			});
+		}
+	}
+
+	function protected_value(portal, fieldname, value) {
+		const data = current_edit_data(portal);
+		if (!data) return value;
+		if (VEHICLE_NUMBER_FIELDS.has(fieldname)) {
+			const saved_number = saved_value(data, fieldname);
+			const next = value == null ? "" : String(value);
+			const user_touched_number = Boolean(portal._vmnp_user_touched_vehicle_number?.[fieldname]);
+			if (!next && !user_touched_number && has_value(saved_number)) return saved_number;
+			return value;
+		}
+		if (!VEHICLE_DEPENDENT_NUMBER[fieldname]) return value;
+		const saved = saved_value(data, fieldname);
+		if (!has_value(saved)) return value;
+		const next = value == null ? "" : String(value);
+		if (next) return value;
+		const number_field = VEHICLE_DEPENDENT_NUMBER[fieldname];
+		const saved_number = saved_value(data, number_field);
+		const current_number = raw_field_value(portal, number_field);
+		const user_touched_number = Boolean(portal._vmnp_user_touched_vehicle_number?.[number_field]);
+		if (
+			user_touched_number &&
+			has_value(saved_number) &&
+			has_value(current_number) &&
+			String(current_number) !== String(saved_number)
+		) {
+			return value;
+		}
+		return saved;
+	}
+
+	function restore_values(portal, data) {
+		if (!portal || !data || data.is_new) return;
+		Object.keys(data.values || {}).forEach((fieldname) => {
+			if (!FORCE_RESTORE.has(fieldname) && !is_choice_field(data, fieldname)) return;
+			put_value(portal, data, fieldname, saved_value(data, fieldname));
+		});
+	}
+
+	function bind_vehicle_number_touch(portal, data) {
+		const $form = portal.$view.find("[data-record-form]").first();
+		if (!$form.length) return;
+		$form.off(".vmnpEditVehicleHoldTouch");
+		VEHICLE_NUMBER_FIELDS.forEach((fieldname) => {
+			const selector = [
+				`[data-control-field="${fieldname}"] input`,
+				`[data-control-field="${fieldname}"] select`,
+				`[data-control-field="${fieldname}"] .vmnp-combo-display`,
+				`[data-control-field="${fieldname}"] .vmnp-combo-search`,
+			].join(",");
+			$form.on("mousedown.vmnpEditVehicleHoldTouch keydown.vmnpEditVehicleHoldTouch", selector, () => {
+				portal._vmnp_user_touched_vehicle_number = portal._vmnp_user_touched_vehicle_number || {};
+				portal._vmnp_user_touched_vehicle_number[fieldname] = true;
+			});
+			$form.on("change.vmnpEditVehicleHoldTouch input.vmnpEditVehicleHoldTouch", selector, (event) => {
+				if (event.originalEvent?.isTrusted) {
+					portal._vmnp_user_touched_vehicle_number = portal._vmnp_user_touched_vehicle_number || {};
+					portal._vmnp_user_touched_vehicle_number[fieldname] = true;
+				}
+			});
+		});
+	}
+
+	function schedule_restore(portal, data) {
+		if (!data || data.is_new) return;
+		[0, 50, 150, 400, 900, 1600, 2600, 4000, 6000].forEach((delay) => {
+			window.setTimeout(() => restore_values(portal, data), delay);
+		});
+	}
+
+	proto.load_campus_options = async function (fieldname, selected_value = "") {
+		const data = current_edit_data(this);
+		const saved = saved_value(data, fieldname);
+		const wanted = selected_value || (has_value(saved) ? saved : "");
+		const result = await previous_load_campus_options.call(this, fieldname, wanted);
+		if (data && has_value(saved)) {
+			put_value(this, data, fieldname, saved);
+			window.setTimeout(() => put_value(this, data, fieldname, saved), 100);
+		}
+		return result;
+	};
+
+	proto.load_vehicle_number_options = async function (key, selected_value = "") {
+		if (typeof previous_load_vehicle_number_options !== "function") return;
+		const data = current_edit_data(this);
+		const number_field = KEY_VEHICLE_NUMBER[key];
+		const saved = saved_value(data, number_field);
+		const wanted = selected_value || (has_value(saved) ? saved : "");
+		const result = await previous_load_vehicle_number_options.call(this, key, wanted);
+		if (data && number_field && has_value(saved) && !this._vmnp_user_touched_vehicle_number?.[number_field]) {
+			put_value(this, data, number_field, saved);
+			window.setTimeout(() => put_value(this, data, number_field, saved), 100);
+			window.setTimeout(() => restore_values(this, data), 150);
+		}
+		return result;
+	};
+
+	proto.render_form = function (data) {
+		this._vmnp_edit_form_value_data = data && !data.is_new ? data : null;
+		this._vmnp_user_touched_vehicle_number = {};
+		const result = previous_render_form.call(this, data);
+		if (!data || data.is_new) return result;
+		bind_vehicle_number_touch(this, data);
+		schedule_restore(this, data);
+		return result;
+	};
+
+	proto.set_control_value = function (fieldname, value) {
+		return previous_set_control_value.call(this, fieldname, protected_value(this, fieldname, value));
+	};
+
+	proto.power_control_changed = function (key, fieldname) {
+		const result = previous_power_control_changed.call(this, key, fieldname);
+		const data = current_edit_data(this);
+		if (data && VEHICLE_NUMBER_FIELDS.has(fieldname)) {
+			schedule_restore(this, data);
+		}
+		return result;
+	};
+})();
+
+/* VMNP final list refresh clears date filters only 2026-08-14 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpFinalListRefreshClearsDateFilters) return;
+	window.__vmnpFinalListRefreshClearsDateFilters = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_refresh_current_view = proto.refresh_current_view;
+
+	proto.refresh_current_view = function () {
+		const view = this.current_view || {};
+		if (view.type !== "list") {
+			return previous_refresh_current_view.call(this);
+		}
+
+		this._master_cache = {};
+		this._vmnp_filters = {};
+		this._vmnp_filters_key = view.key;
+		this._vmnp_date_range = { from_date: "", to_date: "" };
+		this._vmnp_date_range_key = view.key;
+
+		return this.show_list(view.key, {
+			...view,
+			start: 0,
+			search: "",
+			filter_field: "",
+			filter_value: "",
+			filters: {},
+			date_range: { from_date: "", to_date: "" },
+		});
+	};
+})();
+
+/* VMNP final DG previous start reading flow 2026-08-17 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpFinalDgPreviousStartReadingFlow) return;
+	window.__vmnpFinalDgPreviousStartReadingFlow = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_power_control_changed = proto.power_control_changed;
+	const previous_set_control_value = proto.set_control_value;
+	const KEY = "dg_operations";
+	const NUMBER_FIELD = "dg_number";
+	const START_FIELD = "dg_start_reading";
+	const END_FIELD = "dg_end_reading";
+	const TRIGGER_FIELDS = new Set(["dgd_dg_campus", "dg_location", "dg_type", NUMBER_FIELD]);
+
+	function clean(value) {
+		return String(value ?? "").trim();
+	}
+
+	function field_value(portal, fieldname) {
+		const control = portal.controls?.[fieldname];
+		let value = "";
+		if (typeof control?.get_value === "function") {
+			try { value = control.get_value(); } catch (error) {}
+		}
+		if (!clean(value) && control?.$input?.length) value = control.$input.val();
+		if (!clean(value) && portal.$view) {
+			const $field = portal.$view.find(`[data-control-field="${fieldname}"]`).first();
+			value = $field.find("select").val() || $field.find("input, textarea").val() || "";
+			if (!clean(value)) {
+				const label = clean($field.find(".vmnp-combo-text").text());
+				if (label && !/^select\b/i.test(label)) value = label;
+			}
+		}
+		return clean(value);
+	}
+
+	function set_field(portal, fieldname, value) {
+		const next = value === null || value === undefined ? "" : String(value);
+		const control = portal.controls?.[fieldname];
+		if (control?.$input?.length) {
+			control.$input.val(next).attr("value", next);
+			control.value = next;
+		}
+		if (typeof control?.set_value === "function") {
+			try { control.set_value(next); } catch (error) {}
+		}
+		portal.$view
+			?.find(`[data-control-field="${fieldname}"] input, [data-control-field="${fieldname}"] textarea`)
+			.val(next)
+			.attr("value", next);
+	}
+
+	async function apply_previous(portal, token, attempt = 0) {
+		if (portal.current_view?.key !== KEY || portal._vmnp_final_dg_token !== token) return;
+		if (portal._power_form_data && !portal._power_form_data.is_new) return;
+		const dg_number = field_value(portal, NUMBER_FIELD);
+		if (!dg_number && attempt < 12) {
+			window.setTimeout(() => void apply_previous(portal, token, attempt + 1), 120);
+			return;
+		}
+		if (!dg_number || portal._vmnp_final_dg_token !== token) return;
+
+		try {
+			const rows = await frappe.db.get_list("DG Details VMN", {
+				fields: [NUMBER_FIELD, END_FIELD],
+				filters: { [NUMBER_FIELD]: dg_number },
+				order_by: "creation desc",
+				limit: 1,
+			});
+			if (portal._vmnp_final_dg_token !== token) return;
+			const row = rows?.[0];
+			if (clean(row?.[NUMBER_FIELD]) !== dg_number) return;
+			const previous_end = row?.[END_FIELD];
+			if (previous_end === null || previous_end === undefined || previous_end === "") return;
+			set_field(portal, START_FIELD, previous_end);
+			if (typeof portal.calculate_power_app_fields === "function") {
+				portal.calculate_power_app_fields(KEY);
+			}
+		} catch (error) {
+			portal.notify_error?.(error);
+		}
+	}
+
+	function schedule(portal) {
+		if (portal.current_view?.key !== KEY) return;
+		if (portal._power_form_data && !portal._power_form_data.is_new) return;
+		const token = `dg:${Date.now()}:${Math.random()}`;
+		portal._vmnp_final_dg_token = token;
+		[0, 100, 350, 800].forEach((delay) => {
+			window.setTimeout(() => void apply_previous(portal, token), delay);
+		});
+	}
+
+	proto.set_control_value = function (fieldname, value) {
+		const result = previous_set_control_value.call(this, fieldname, value);
+		if (fieldname === NUMBER_FIELD) schedule(this);
+		return result;
+	};
+
+	proto.power_control_changed = function (key, fieldname) {
+		const result = previous_power_control_changed.call(this, key, fieldname);
+		if (key === KEY && TRIGGER_FIELDS.has(fieldname)) schedule(this);
+		return result;
+	};
+})();
+
+/* VMNP final Log Details previous start reading flow 2026-08-17 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpFinalLogPreviousStartReadingFlow) return;
+	window.__vmnpFinalLogPreviousStartReadingFlow = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_power_control_changed = proto.power_control_changed;
+
+	function clean(value) {
+		return String(value ?? "").trim();
+	}
+
+	function field_value(portal, fieldname) {
+		const control = portal.controls?.[fieldname];
+		let value = "";
+		if (typeof control?.get_value === "function") {
+			try { value = control.get_value(); } catch (error) {}
+		}
+		if (!clean(value) && control?.$input?.length) {
+			value = control.$input.val();
+		}
+		if (!clean(value) && portal.$view) {
+			const $field = portal.$view.find(`[data-control-field="${fieldname}"]`).first();
+			value = $field.find("select").val() || $field.find("input, textarea").val() || "";
+			if (!clean(value)) {
+				const label = clean($field.find(".vmnp-combo-text").text());
+				if (label && !/^select\b/i.test(label)) value = label;
+			}
+		}
+		return clean(value);
+	}
+
+	function set_field(portal, fieldname, value) {
+		const next = value == null ? "" : String(value);
+		const control = portal.controls?.[fieldname];
+		try {
+			if (typeof portal.vmnp_set_calculated_field_silent === "function") {
+				portal.vmnp_set_calculated_field_silent(fieldname, next);
+			} else {
+				portal.set_control_value(fieldname, next);
+			}
+		} catch (error) {
+			try { portal.set_control_value(fieldname, next); } catch (inner) {}
+		}
+		if (control?.$input?.length) {
+			control.$input.val(next).attr("value", next);
+			control.value = next;
+		}
+		portal.$view
+			?.find(`[data-control-field="${fieldname}"] input, [data-control-field="${fieldname}"] select, [data-control-field="${fieldname}"] textarea`)
+			.val(next)
+			.attr("value", next);
+	}
+
+	async function set_previous_start_reading(portal, vehicle_number, token) {
+		const response = await frappe.call({
+			method: "vehicle_management_nagpur.vehicle_management_nagpur.page.vehicle_management.vehicle_management_powerapp_v4.get_document_list",
+			args: {
+				key: "vehicle_logs",
+				start: 0,
+				page_length: 1,
+				search: "",
+				filter_field: "vehicle_number",
+				filter_value: vehicle_number,
+				sort_by: "creation",
+				sort_order: "desc",
+			},
+		});
+		if (portal._vmnp_final_log_vehicle_token !== token) return;
+		const row = response?.message?.rows?.[0];
+		if (clean(row?.vehicle_number) !== vehicle_number) return;
+		const previous_end = row?.end_reading;
+		if (previous_end === null || previous_end === undefined || previous_end === "") return;
+		set_field(portal, "start_reading", previous_end);
+		if (typeof portal.calculate_power_app_fields === "function") {
+			portal.calculate_power_app_fields("vehicle_logs");
+		}
+	}
+
+	async function handle_vehicle_change(portal, token, attempt = 0) {
+		const vehicle_number = field_value(portal, "vehicle_number");
+		if (!vehicle_number && attempt < 5) {
+			window.setTimeout(() => handle_vehicle_change(portal, token, attempt + 1), 80);
+			return;
+		}
+		if (!vehicle_number || portal._vmnp_final_log_vehicle_token !== token) return;
+
+		try {
+			const details = await portal.api("get_vehicle_details", { vehicle_number });
+			if (portal._vmnp_final_log_vehicle_token !== token || !details) return;
+			set_field(portal, "ld_type_of_vehicle", details.vd_type_of_vehicle || field_value(portal, "ld_type_of_vehicle") || "");
+			set_field(portal, "ld_vehicle_name", details.vd_vehicle_name || "");
+			set_field(portal, "ld_vehicle_location", details.vd_location || "");
+			if (typeof portal.load_campus_options === "function") {
+				void portal.load_campus_options("ld_select_campus", "");
+			}
+			await set_previous_start_reading(portal, vehicle_number, token);
+		} catch (error) {
+			portal.notify_error?.(error);
+		}
+	}
+
+	proto.power_control_changed = function (key, fieldname) {
+		if (key === "vehicle_logs" && fieldname === "vehicle_number") {
+			const token = `vehicle_logs:${Date.now()}:${Math.random()}`;
+			this._vmnp_final_log_vehicle_token = token;
+			void handle_vehicle_change(this, token);
+			return;
+		}
+		return previous_power_control_changed.call(this, key, fieldname);
+	};
+})();
+
+/* VMNP unified operational UX and validation layer 2026-08-18 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpUnifiedOperationalUx20260818) return;
+	window.__vmnpUnifiedOperationalUx20260818 = true;
+
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_show_list = proto.show_list;
+	const previous_power_control_changed = proto.power_control_changed;
+	const previous_save_form = proto.save_form;
+	const previous_make_control = proto.make_control;
+	const previous_make_select_searchable = proto.make_select_searchable;
+
+	const clean = (value) => String(value ?? "").trim();
+	const number_value = (value) => {
+		const parsed = Number(clean(value).replace(/,/g, ""));
+		return Number.isFinite(parsed) ? parsed : null;
+	};
+	const iso_from_date = (date) =>
+		`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+	function control_input(portal, fieldname) {
+		const control = portal.controls?.[fieldname];
+		if (control?.$input?.length) return control.$input.first();
+		return portal.$view.find(`[data-control-field="${fieldname}"] input`).first();
+	}
+
+	function read_value(portal, fieldname) {
+		const $input = control_input(portal, fieldname);
+		if ($input.length) return clean($input.val());
+		try { return clean(portal.controls?.[fieldname]?.get_value?.()); } catch (error) { return ""; }
+	}
+
+	function write_value(portal, fieldname, value) {
+		const next = value == null ? "" : String(value);
+		const control = portal.controls?.[fieldname];
+		try { control?.set_value?.(next); } catch (error) {}
+		if (control) control.value = next;
+		portal.$view
+			.find(`[data-control-field="${fieldname}"] input, [data-control-field="${fieldname}"] textarea`)
+			.val(next)
+			.attr("value", next);
+	}
+
+	proto.show_vmnp_notice = function (message, tone = "danger") {
+		let $stack = this.$root.find(".vmnp-notice-stack");
+		if (!$stack.length) {
+			$stack = $('<div class="vmnp-notice-stack" aria-live="polite" aria-atomic="true"></div>').appendTo(this.$root);
+		}
+		const $notice = $(`<div class="vmnp-notice ${tone}" role="status"><span></span><strong></strong></div>`);
+		$notice.find("strong").text(message);
+		$stack.append($notice);
+		window.setTimeout(() => $notice.addClass("is-visible"), 10);
+		window.setTimeout(() => {
+			$notice.removeClass("is-visible");
+			window.setTimeout(() => $notice.remove(), 220);
+		}, 4200);
+	};
+
+	// Form dates use the portal's own calendar surface, never the Desk date control.
+	proto.make_date_control = function ($slot, field, value) {
+		const display_value = this.format_date(value, "");
+		const picker_id = `vmnp-date-${field.fieldname}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+		$slot.html(`
+			<label class="vmnp-field-label" for="${picker_id}">
+				${frappe.utils.escape_html(field.label)}${field.reqd ? '<b class="vmnp-required">*</b>' : ""}
+			</label>
+			<div class="vmnp-date-input vmnp-custom-date">
+				${this.icon("calendar")}
+				<input id="${picker_id}" class="vmnp-input" type="text" autocomplete="off"
+					placeholder="dd/mm/yyyy" inputmode="numeric" aria-haspopup="dialog" aria-expanded="false"
+					value="${frappe.utils.escape_html(display_value)}" ${field.read_only ? "readonly" : ""}>
+			</div>
+			${field.description ? `<small class="vmnp-field-help">${frappe.utils.escape_html(field.description)}</small>` : ""}
+		`);
+
+		const portal = this;
+		const $input = $slot.find("input");
+		const selected_iso = this.parse_display_date(display_value) || "";
+		const selected_date = selected_iso ? new Date(`${selected_iso}T00:00:00`) : new Date();
+		let shown = new Date(selected_date.getFullYear(), selected_date.getMonth(), 1);
+		const $popover = $(`
+			<div class="vmnp-date-popover" role="dialog" aria-label="${frappe.utils.escape_html(field.label)}" hidden>
+				<div class="vmnp-date-popover-head">
+					<button type="button" data-date-prev aria-label="${__("Previous month")}">${this.icon("arrow-left")}</button>
+					<strong data-date-month></strong>
+					<button type="button" data-date-next aria-label="${__("Next month")}">${this.icon("arrow-right")}</button>
+				</div>
+				<div class="vmnp-date-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+				<div class="vmnp-date-days" data-date-days></div>
+				<button class="vmnp-date-today" type="button" data-date-today>${__("Today")}</button>
+			</div>
+		`).appendTo(this.$root);
+
+		const render = () => {
+			$popover.find("[data-date-month]").text(
+				new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(shown)
+			);
+			const today = iso_from_date(new Date());
+			const selected = portal.parse_display_date($input.val()) || "";
+			const first_day = new Date(shown.getFullYear(), shown.getMonth(), 1).getDay();
+			const days = new Date(shown.getFullYear(), shown.getMonth() + 1, 0).getDate();
+			let html = "";
+			for (let index = 0; index < first_day; index += 1) html += '<span class="is-empty"></span>';
+			for (let day = 1; day <= days; day += 1) {
+				const iso = iso_from_date(new Date(shown.getFullYear(), shown.getMonth(), day));
+				html += `<button type="button" data-date-value="${iso}" class="${iso === today ? "is-today" : ""} ${iso === selected ? "is-selected" : ""}">${day}</button>`;
+			}
+			$popover.find("[data-date-days]").html(html);
+		};
+
+		const position = () => {
+			const rect = $input[0].getBoundingClientRect();
+			const width = Math.min(310, Math.max(280, rect.width));
+			const estimated_height = 354;
+			const open_up = window.innerHeight - rect.bottom < estimated_height && rect.top > estimated_height;
+			$popover.css({
+				position: "fixed",
+				left: Math.min(Math.max(8, rect.left), window.innerWidth - width - 8),
+				top: open_up ? Math.max(8, rect.top - estimated_height - 6) : rect.bottom + 6,
+				width,
+			});
+		};
+
+		const close = () => {
+			$popover.attr("hidden", true);
+			$input.attr("aria-expanded", "false");
+		};
+		const open = () => {
+			if (field.read_only) return;
+			this.$root.find(".vmnp-date-popover").not($popover).attr("hidden", true);
+			const current = this.parse_display_date($input.val());
+			if (current) {
+				const date = new Date(`${current}T00:00:00`);
+				shown = new Date(date.getFullYear(), date.getMonth(), 1);
+			}
+			render();
+			position();
+			$popover.removeAttr("hidden");
+			$input.attr("aria-expanded", "true");
+		};
+
+		$input.on("focus click", open);
+		$popover.on("mousedown", (event) => event.stopPropagation());
+		$popover.on("click", "[data-date-prev]", () => { shown = new Date(shown.getFullYear(), shown.getMonth() - 1, 1); render(); });
+		$popover.on("click", "[data-date-next]", () => { shown = new Date(shown.getFullYear(), shown.getMonth() + 1, 1); render(); });
+		$popover.on("click", "[data-date-value]", (event) => {
+			$input.val(portal.format_date($(event.currentTarget).attr("data-date-value"), "")).trigger("change");
+			close();
+		});
+		$popover.on("click", "[data-date-today]", () => {
+			$input.val(portal.format_date(iso_from_date(new Date()), "")).trigger("change");
+			close();
+		});
+		$(window).on(`resize.${picker_id} scroll.${picker_id}`, close);
+
+		this.controls[field.fieldname] = {
+			$input,
+			get_value: () => {
+				const raw = clean($input.val());
+				if (!raw) return "";
+				const parsed = portal.parse_display_date(raw);
+				if (!parsed) throw new Error(__(`${field.label} must use dd/mm/yyyy format.`));
+				return parsed;
+			},
+			set_value: (next) => $input.val(portal.format_date(next, "")),
+		};
+	};
+
+	$(document)
+		.off("mousedown.vmnpCustomDate")
+		.on("mousedown.vmnpCustomDate", (event) => {
+			if ($(event.target).closest(".vmnp-date-popover, .vmnp-custom-date").length) return;
+			$(".vmnp-date-popover").attr("hidden", true);
+			$(".vmnp-custom-date input").attr("aria-expanded", "false");
+		});
+
+	proto.parse_power_time = function (value) {
+		const matches = [...String(value || "").matchAll(/(\d{1,2}):(\d{2})(?::\d{2})?/g)];
+		const match = matches[matches.length - 1];
+		if (!match) return { hour: "", minute: "", period: "" };
+		const hour_24 = Number(match[1]);
+		return {
+			hour: String(hour_24 % 12 || 12),
+			minute: match[2],
+			period: hour_24 >= 12 ? "PM" : "AM",
+		};
+	};
+
+	// Keep the three-part time input compact, branded, and independent of searchable Link/Select combos.
+	proto.make_power_time_control = function ($slot, field, value) {
+		const is_datetime = field.fieldtype === "Datetime";
+		const parsed = this.parse_power_time(value);
+		const hours = Array.from({ length: 12 }, (_, index) => String(index + 1));
+		const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+		$slot.html(`
+			<label class="vmnp-field-label">${frappe.utils.escape_html(field.label)}${field.reqd ? '<b class="vmnp-required">*</b>' : ""}</label>
+			<div class="vmnp-time-input vmnp-custom-time" data-time-field="${field.fieldname}">
+				<span class="vmnp-time-icon">${this.icon("clock")}</span>
+				<select class="vmnp-select" data-time-hour aria-label="${__("Hour")}" ${field.read_only ? "disabled" : ""}>
+					<option value="">${__("Hour")}</option>${hours.map((hour) => `<option value="${hour}" ${parsed.hour === hour ? "selected" : ""}>${hour}</option>`).join("")}
+				</select>
+				<select class="vmnp-select" data-time-minute aria-label="${__("Minute")}" ${field.read_only ? "disabled" : ""}>
+					<option value="">${__("Min")}</option>${minutes.map((minute) => `<option value="${minute}" ${parsed.minute === minute ? "selected" : ""}>${minute}</option>`).join("")}
+				</select>
+				<select class="vmnp-select" data-time-period aria-label="${__("AM or PM")}" ${field.read_only ? "disabled" : ""}>
+					<option value="">${__("AM/PM")}</option><option value="AM" ${parsed.period === "AM" ? "selected" : ""}>AM</option><option value="PM" ${parsed.period === "PM" ? "selected" : ""}>PM</option>
+				</select>
+			</div>
+			${field.description ? `<small class="vmnp-field-help">${frappe.utils.escape_html(field.description)}</small>` : ""}
+		`);
+		const read = () => {
+			const hour = $slot.find("[data-time-hour]").val();
+			const minute = $slot.find("[data-time-minute]").val();
+			const period = $slot.find("[data-time-period]").val();
+			if (!hour || minute === "" || !period) return "";
+			let hour_24 = Number(hour) % 12;
+			if (period === "PM") hour_24 += 12;
+			return `${String(hour_24).padStart(2, "0")}:${minute}:00`;
+		};
+		const control = {
+			$input: $slot.find("select"),
+			get_value: () => {
+				const time = read();
+				if (!time || !is_datetime) return time;
+				const date_field = this._power_form_data?.key === "dg_operations" ? "dgd_date" : "date";
+				let record_date = "";
+				try { record_date = this.controls?.[date_field]?.get_value?.() || ""; } catch (error) {}
+				if (!record_date) record_date = clean(this._power_form_data?.values?.[date_field]).slice(0, 10);
+				return record_date ? `${record_date} ${time}` : "";
+			},
+			set_value: (next) => {
+				const parsed_next = this.parse_power_time(next);
+				$slot.find("[data-time-hour]").val(parsed_next.hour);
+				$slot.find("[data-time-minute]").val(parsed_next.minute);
+				$slot.find("[data-time-period]").val(parsed_next.period);
+			},
+		};
+		this.controls[field.fieldname] = control;
+		$slot.find("select").on("change.vmnpTimeRules", () => {
+			window.setTimeout(() => {
+				if (this._power_form_data?.key === "dg_operations") this.refresh_dg_time_constraints?.(true);
+				else this.refresh_log_time_constraints(true);
+			}, 0);
+		});
+	};
+
+	// A previous hotfix routed Date/Datetime fields straight back to Frappe.
+	// This last resolver guarantees the custom portal controls win for Log Details.
+	proto.make_control = function ($slot, field, value) {
+		if (field.fieldtype === "Date") {
+			this.make_date_control($slot, field, value);
+			return;
+		}
+		const time_fields = this._power_form_data?.key === "dg_operations"
+			? ["dg_start_time", "dg_end_time"]
+			: ["start_time", "end_time"];
+		if (
+			["vehicle_logs", "dg_operations"].includes(this._power_form_data?.key) &&
+			field.fieldtype === "Datetime" &&
+			time_fields.includes(field.fieldname)
+		) {
+			this.make_power_time_control($slot, field, value);
+			return;
+		}
+		return previous_make_control.call(this, $slot, field, value);
+	};
+
+	proto.make_select_searchable = function (select) {
+		if ($(select).is('[data-vmnp-no-search="1"]')) return;
+		return previous_make_select_searchable.call(this, select);
+	};
+
+	proto.refresh_log_time_constraints = function (show_notice = false) {
+		if (this._power_form_data?.key !== "vehicle_logs") return;
+		const start_text = clean(this.controls?.start_time?.get_value?.());
+		const end_text = clean(this.controls?.end_time?.get_value?.());
+		const to_minutes = (text) => {
+			const matches = [...text.matchAll(/(\d{1,2}):(\d{2})(?::\d{2})?/g)];
+			const match = matches[matches.length - 1];
+			return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+		};
+		const start = to_minutes(start_text);
+		const end = to_minutes(end_text);
+		const $end = this.$view.find('[data-control-field="end_time"]');
+		const period = $end.find("[data-time-period]").val();
+		const hour = $end.find("[data-time-hour]").val();
+		const minute = $end.find("[data-time-minute]").val();
+		const minute_for = (hour_12, period_name, minute) => {
+			let value = Number(hour_12) % 12;
+			if (period_name === "PM") value += 12;
+			return value * 60 + Number(minute);
+		};
+
+		$end.find("[data-time-period] option[value]").each(function () {
+			if (!this.value || start === null) return $(this).prop("disabled", false);
+			if (hour && minute !== "") {
+				return $(this).prop("disabled", minute_for(hour, this.value, minute) < start);
+			}
+			const maximum = this.value === "AM" ? 11 * 60 + 59 : 23 * 60 + 59;
+			$(this).prop("disabled", maximum < start);
+		});
+		$end.find("[data-time-hour] option[value]").each(function () {
+			if (!this.value || !period || start === null) return $(this).prop("disabled", false);
+			$(this).prop("disabled", minute_for(this.value, period, minute !== "" ? minute : 59) < start);
+		});
+		$end.find("[data-time-minute] option[value]").each(function () {
+			if (this.value === "" || !period || !hour || start === null) return $(this).prop("disabled", false);
+			$(this).prop("disabled", minute_for(hour, period, this.value) < start);
+		});
+
+		if (start !== null && end !== null && end < start) {
+			this.controls.end_time?.set_value?.("");
+			write_value(this, "ld_total_hours", 0);
+			if (show_notice) this.show_vmnp_notice(__("End Time must be after Start Time for the selected date."));
+			return false;
+		}
+		return true;
+	};
+
+	proto.duration_hours = function (start_field, end_field) {
+		const extract_minutes = (value) => {
+			const matches = [...clean(value).matchAll(/(\d{1,2}):(\d{2})(?::\d{2})?/g)];
+			const match = matches[matches.length - 1];
+			return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+		};
+		const start = extract_minutes(this.control_value(start_field));
+		const end = extract_minutes(this.control_value(end_field));
+		if (start === null || end === null || end < start) return 0;
+		return Math.round(((end - start) / 60) * 100) / 100;
+	};
+
+	function validate_readings(portal, show_notice = false) {
+		const start_raw = read_value(portal, "start_reading");
+		const end_raw = read_value(portal, "end_reading");
+		if (!start_raw || !end_raw) {
+			write_value(portal, "ld_distance", start_raw && !end_raw ? 0 : "");
+			return true;
+		}
+		const start = number_value(start_raw);
+		const end = number_value(end_raw);
+		if (start === null || end === null || end < start) {
+			write_value(portal, "end_reading", "");
+			write_value(portal, "ld_distance", 0);
+			if (show_notice) portal.show_vmnp_notice(__("End Reading cannot be less than Start Reading. The invalid value was cleared."));
+			return false;
+		}
+		write_value(portal, "ld_distance", Math.round((end - start) * 1000) / 1000);
+		return true;
+	}
+
+	function lock_start_reading(portal, locked) {
+		const $slot = portal.$view.find('[data-control-field="start_reading"]');
+		const $input = $slot.find("input").first();
+		$input.prop("readonly", Boolean(locked)).attr("aria-readonly", locked ? "true" : "false");
+		$slot.toggleClass("is-locked-reading", Boolean(locked));
+		if (locked) $input.attr("title", __("Filled from this vehicle's previous End Reading"));
+		else $input.removeAttr("title");
+	}
+
+	async function sync_previous_start(portal, data) {
+		if (portal.current_view?.key !== "vehicle_logs") return;
+		const vehicle_number = read_value(portal, "vehicle_number");
+		const token = `${vehicle_number}:${Date.now()}:${Math.random()}`;
+		portal._vmnp_previous_start_lock_token = token;
+		lock_start_reading(portal, false);
+		if (!vehicle_number) return;
+		try {
+			const filters = { vehicle_number };
+			if (data?.name) filters.name = ["!=", data.name];
+			const rows = await frappe.db.get_list("Log Details VMN", {
+				fields: ["name", "end_reading"],
+				filters,
+				order_by: "creation desc",
+				limit: 1,
+			});
+			if (portal._vmnp_previous_start_lock_token !== token) return;
+			const previous_end = rows?.[0]?.end_reading;
+			if (previous_end === null || previous_end === undefined || previous_end === "") {
+				lock_start_reading(portal, false);
+				return;
+			}
+			write_value(portal, "start_reading", previous_end);
+			lock_start_reading(portal, true);
+			validate_readings(portal, false);
+		} catch (error) {
+			lock_start_reading(portal, false);
+		}
+	}
+
+	function bind_log_form_rules(portal, data) {
+		const form = portal.$view.find("[data-record-form]")[0];
+		if (!form) return;
+		const handler = (event) => {
+			const fieldname = $(event.target).closest("[data-control-field]").attr("data-control-field") || "";
+			if (fieldname !== "end_reading") return;
+			const valid = validate_readings(portal, true);
+			if (!valid) {
+				event.preventDefault();
+				event.stopImmediatePropagation();
+			}
+		};
+		form.addEventListener("blur", handler, true);
+		form.addEventListener("focusout", handler, true);
+		$(form).off("change.vmnpUnifiedReading").on("change.vmnpUnifiedReading", '[data-control-field="end_reading"] input', () => validate_readings(portal, true));
+		window.setTimeout(() => void sync_previous_start(portal, data), 80);
+		window.setTimeout(() => portal.refresh_log_time_constraints(false), 120);
+	}
+
+	proto.render_form = function (data) {
+		this.$root.find(".vmnp-date-popover").remove();
+		const result = previous_render_form.call(this, data);
+		if (data?.key === "vehicle_logs") {
+			this.enhance_selects?.();
+			bind_log_form_rules(this, data);
+		}
+		return result;
+	};
+
+	proto.power_control_changed = function (key, fieldname) {
+		const result = previous_power_control_changed.call(this, key, fieldname);
+		if (key === "vehicle_logs" && fieldname === "vehicle_number") {
+			window.setTimeout(() => void sync_previous_start(this, this._power_form_data || {}), 100);
+		}
+		if (key === "vehicle_logs" && ["start_time", "end_time"].includes(fieldname)) {
+			window.setTimeout(() => this.refresh_log_time_constraints(true), 0);
+		}
+		return result;
+	};
+
+	proto.save_form = function (data, submit) {
+		if (data?.key === "vehicle_logs") {
+			if (!validate_readings(this, true) || !this.refresh_log_time_constraints(true)) return;
+		}
+		return previous_save_form.call(this, data, submit);
+	};
+
+	proto.show_list = async function (key, options = {}) {
+		const result = await previous_show_list.call(this, key, options);
+		const $button = this.$view.find("[data-clear-list]").first();
+		if ($button.length) {
+			$button.attr({ title: __("Clear search and filters"), "aria-label": __("Clear search and filters") });
+			const element = $button[0];
+			if (!element.dataset.vmnpUnifiedClear) {
+				element.dataset.vmnpUnifiedClear = "1";
+				element.addEventListener("click", (event) => {
+					event.preventDefault();
+					event.stopImmediatePropagation();
+					this._vmnp_filters = {};
+					this._vmnp_date_range = { from_date: "", to_date: "" };
+					this.show_list(key, {
+						type: "list", key, start: 0, search: "", filter_field: "", filter_value: "",
+						filters: {}, date_range: { from_date: "", to_date: "" },
+					});
+				}, true);
+			}
+		}
 		return result;
 	};
 })();

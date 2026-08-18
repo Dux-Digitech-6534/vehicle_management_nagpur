@@ -181,12 +181,12 @@
   {
    "default": "Now",
    "fieldname": "dg_start_time",
-   "fieldtype": "Time",
+   "fieldtype": "Datetime",
    "label": "Start Time"
   },
   {
    "fieldname": "dg_end_time",
-   "fieldtype": "Time",
+   "fieldtype": "Datetime",
    "label": "End Time"
   },
   {
@@ -213,7 +213,7 @@
   {
    "fieldname": "dg_diesel_rateltr",
    "fieldtype": "Currency",
-   "label": "Diesel Rate (₹/ltr)"
+   "label": "Diesel Rate (\u20b9/ltr)"
   },
   {
    "depends_on": "eval:doc.workflow_state == 'Rejected'",
@@ -226,8 +226,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-03 15:49:04.268371",
- "modified_by": "ritesh.sharma@duxdigitech.com",
+ "modified": "2026-08-17 13:26:05.961399",
+ "modified_by": "Administrator",
  "module": "Vehicle Management Nagpur",
  "name": "DG Details VMN",
  "naming_rule": "Expression",
