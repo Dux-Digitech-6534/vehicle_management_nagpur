@@ -243,6 +243,9 @@ def save_document(key, values, name=None, submit=0):
         base._ensure_approval_state(doc)
     doc.save()
 
+    if key == "users":
+        base._vmn_post_save_user(doc, values)
+
     if cint(submit):
         if not meta.is_submittable:
             frappe.throw(_("{0} cannot be submitted.").format(_(config["label"])))

@@ -380,3 +380,15 @@ def delete_document(key, name):
     frappe.db.commit()
 
     return {"name": doc.name, "message": base._("Record deleted")}
+
+
+@frappe.whitelist()
+def get_app_roles():
+    base = powerapp_v3.powerapp_v2.base
+    return base.get_app_roles()
+
+
+@frappe.whitelist()
+def get_user_app_roles(user=None):
+    base = powerapp_v3.powerapp_v2.base
+    return base.get_user_app_roles(user=user)

@@ -2388,7 +2388,7 @@ class VehicleManagementPortal {
 					"rto_vehicle_location",
 					"rto_select_campus",
 					"rto_supervisor_name",
-					"document_type",
+					"rto_document_type",
 					"trust_name",
 					"issued_date",
 					"expired_date",
@@ -2412,7 +2412,7 @@ class VehicleManagementPortal {
 			// rto_supervisor_name yahan se hata diya: ye field read-only hai aur
 			// value sirf campus master se auto-aati hai, is liye required rakhne
 			// par form kabhi save hi nahi ho paata tha.
-			"document_type",
+			"rto_document_type",
 			"trust_name",
 			"issued_date",
 			"expired_date",
@@ -2421,7 +2421,7 @@ class VehicleManagementPortal {
 	};
 
 	const read_only_fields = {
-		maintenance: new Set(["md_vehicle_name", "md_vehicle_location", "md_total_repairingamount"]),
+		maintenance: new Set(["md_vehicle_name", "md_vehicle_location"]),
 		rto_compliance: new Set(["rto_vehicle_name", "rto_vehicle_location", "rto_supervisor_name"]),
 	};
 
@@ -2813,8 +2813,12 @@ class VehicleManagementPortal {
 			});
 		});
 		const ordered_fields = [
+			"ud_create_new_user",
+			"ud_new_user_name",
+			"ud_new_user_email",
 			"ud_user_name",
 			"ud_user_type",
+			"ud_campus",
 			"ud_user_email",
 			"ud_personal_email",
 		]
@@ -2822,7 +2826,7 @@ class VehicleManagementPortal {
 			.filter(Boolean)
 			.map((field) => ({
 				...field,
-				reqd: ["ud_user_name", "ud_user_type"].includes(field.fieldname) ? 1 : field.reqd,
+				reqd: ["ud_user_type", "ud_campus"].includes(field.fieldname) ? 1 : 0,
 				read_only: field.fieldname === "ud_user_email" ? 1 : field.read_only,
 			}));
 		return ordered_fields.length ? [{ label: __("Details"), fields: ordered_fields }] : sections;
@@ -2833,6 +2837,20 @@ class VehicleManagementPortal {
 		if (key === "users" && fieldname === "ud_user_name") {
 			void this.load_vehicle_user_email();
 		}
+		if (key === "users" && fieldname === "ud_create_new_user") {
+			this.toggle_vehicle_user_creation_fields();
+		}
+	};
+
+	proto.toggle_vehicle_user_creation_fields = function () {
+		if (this._power_form_data?.key !== "users") return;
+		const create_new = Number(this.control_value("ud_create_new_user") || 0) === 1;
+		const $new_name = this.$view.find('[data-control-field="ud_new_user_name"]');
+		const $new_email = this.$view.find('[data-control-field="ud_new_user_email"]');
+		const $existing = this.$view.find('[data-control-field="ud_user_name"]');
+		$new_name.toggle(create_new).find("input").prop("required", create_new);
+		$new_email.toggle(create_new).find("input").prop("required", create_new);
+		$existing.toggle(!create_new).find("select, input").prop("required", !create_new);
 	};
 
 	proto.load_vehicle_user_email = async function () {
@@ -2887,6 +2905,7 @@ class VehicleManagementPortal {
 		previous_render_form.call(this, data);
 		if (data.key !== "users") return;
 		void this.load_vehicle_user_options(data.values?.ud_user_name || "");
+		window.setTimeout(() => this.toggle_vehicle_user_creation_fields?.(), 0);
 	};
 
 	proto.make_control = function ($slot, field, value) {
@@ -2987,6 +3006,7 @@ class VehicleManagementPortal {
 	const previous_render_form = proto.render_form;
 
 	const campus_fields = new Set([
+		"ud_campus",
 		"ld_select_campus",
 		"dd_select_campus",
 		"md_select_campus",
@@ -4660,6 +4680,7 @@ class VehicleManagementPortal {
 	$(document).on("focusin.vmnpsearchable mousedown.vmnpsearchable", ".vmnp-root select", (event) => {
 		const portal = VehicleManagementPortal._instance;
 		const $select = $(event.currentTarget);
+		if ($select.is('[data-vmnp-no-search="1"]')) return;
 		if (!portal || $select.data("vmnp-combo")) return;
 		// Native dropdown khulne se roko — warna combo ke saath dono dikhte hain.
 		if (event.type === "mousedown") event.preventDefault();
@@ -6091,7 +6112,7 @@ class VehicleManagementPortal {
 					"name",
 					"rto_vehicle_number",
 					"rto_vehicle_name",
-					"document_type",
+					"rto_document_type",
 					"expired_date",
 					"rto_select_campus",
 				],
@@ -6118,7 +6139,7 @@ class VehicleManagementPortal {
 							<span class="vmnp-expiry-main">
 								<strong>${frappe.utils.escape_html(row.rto_vehicle_number || row.name)}</strong>
 								<small>${frappe.utils.escape_html(
-									[titles[row.rto_select_campus] || row.rto_select_campus, row.document_type]
+									[titles[row.rto_select_campus] || row.rto_select_campus, row.rto_document_type]
 										.filter(Boolean)
 										.join(" · ")
 								)}</small>
@@ -6438,7 +6459,6 @@ class VehicleManagementPortal {
 	const LINK_SELECTS = {
 		diesel_generator_location: { doctype: "Campus Details VMN", label_field: "cd_campus_name" },
 		diesel_generator_campus: { doctype: "Location Details VMN", label_field: "location_name" },
-		vendor_name: { doctype: "User", label_field: "full_name", filters: { enabled: 1 } },
 	};
 
 	proto.make_control = function ($slot, field, value) {
@@ -6672,7 +6692,9 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	const close_all = (except) => {
 		$(".vmnp-combo.is-open").each((index, element) => {
 			if (element === except) return;
-			$(element).removeClass("is-open").find(".vmnp-combo-panel").attr("hidden", true);
+			const close = $(element).data("vmnp-combo-close");
+			if (typeof close === "function") close();
+			else $(element).removeClass("is-open").find(".vmnp-combo-panel").attr("hidden", true);
 		});
 	};
 
@@ -6755,7 +6777,28 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		const open = () => {
 			close_all($combo[0]);
 			$combo.addClass("is-open");
-			$panel.removeAttr("hidden");
+			// A transformed form ancestor changes the containing block of a fixed
+			// element. Dock the panel under body while it is open so Link/Select
+			// menus always sit directly below their own field.
+			// Theme variables normally inherit from .vmnp-root. Copy them before
+			// detaching the panel, otherwise its surface becomes transparent and
+			// the form fields underneath visually bleed through it.
+			const source_style = window.getComputedStyle($combo[0]);
+			[
+				"--vmnp-surface",
+				"--vmnp-surface-soft",
+				"--vmnp-border",
+				"--vmnp-border-strong",
+				"--vmnp-text",
+				"--vmnp-muted",
+				"--vmnp-primary",
+				"--vmnp-sidebar-hover",
+				"--vmnp-shadow",
+			].forEach((property) => {
+				const property_value = source_style.getPropertyValue(property);
+				if (property_value) $panel[0].style.setProperty(property, property_value);
+			});
+			$panel.appendTo(document.body).removeAttr("hidden");
 			$search.val("");
 			render("");
 			window.setTimeout(() => $search.trigger("focus"), 0);
@@ -6764,8 +6807,10 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		const close = () => {
 			$combo.removeClass("is-open");
 			$panel.attr("hidden", true);
+			$panel.appendTo($combo);
 			sync_display();
 		};
+		$combo.data("vmnp-combo-close", close);
 
 		$display.on("click", (event) => {
 			event.preventDefault();
@@ -6790,7 +6835,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		});
 
 		$(document).on("mousedown.vmnpcombo", (event) => {
-			if (!$combo[0].contains(event.target)) close();
+			if (!$combo[0].contains(event.target) && !$panel[0].contains(event.target)) close();
 		});
 
 		$(window).on("scroll.vmnpcombo resize.vmnpcombo", () => {
@@ -8985,11 +9030,6 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 					min-width: 100% !important;
 					max-width: 100% !important;
 				}
-				.vmnp-page [data-control-field="rto_document_type"] .vmnp-select,
-				.vmnp-page [data-control-field="document_type"] .vmnp-select {
-					width: 100% !important;
-					min-width: 260px !important;
-				}
 			`)
 			.appendTo(document.head);
 	}
@@ -9538,13 +9578,15 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 		}
 
 		const rows = maintenance_rows(this);
-		const total = rows.reduce((sum, row) => sum + (Number(row.mwd_amount || row.amount || 0) || 0), 0);
 		values[WORK_FIELD] = JSON.stringify(rows);
 		values.md_work_details_table = rows.map((row) => ({
 			mwd_repair_work: String(row.work || "").trim(),
 			mwd_amount: Number(row.mwd_amount || row.amount || 0) || 0,
 		}));
-		values[TOTAL_FIELD] = total;
+		// Total Repairing Amount is intentionally user-editable. Keep the value
+		// collected from its control instead of replacing it with the work sum.
+		const entered_total = String(values[TOTAL_FIELD] ?? "").replace(/,/g, "").trim();
+		values[TOTAL_FIELD] = entered_total === "" ? "" : Number(entered_total);
 
 		const $buttons = this.$view.find("[data-save-form], [data-submit-form]");
 		$buttons.prop("disabled", true).addClass("is-loading");
@@ -9873,7 +9915,7 @@ $(document).on("focus.vmnpcombosel click.vmnpcombosel", ".vmnp-combo-input", (ev
 	const RTO_KEY = "rto_compliance";
 	const CAMPUS_FIELD = "rto_select_campus";
 	const SUPERVISOR_FIELD = "rto_supervisor_name";
-	const DOCUMENT_FIELD = "document_type";
+	const DOCUMENT_FIELD = "rto_document_type";
 
 	function has_option($select, value) {
 		return $select
@@ -10765,7 +10807,7 @@ proto.render_form = function (data) {
 		"rto_vehicle_location",
 		"rto_select_campus",
 		"rto_supervisor_name",
-		"document_type",
+		"rto_document_type",
 	]);
 	const KEY_VEHICLE_NUMBER = {
 		vehicle_logs: "vehicle_number",
@@ -11550,7 +11592,20 @@ proto.render_form = function (data) {
 	};
 
 	proto.make_select_searchable = function (select) {
-		if ($(select).is('[data-vmnp-no-search="1"]')) return;
+		const $select = $(select);
+		const fieldname = $select.closest("[data-control-field]").attr("data-control-field") || "";
+		if (fieldname === "rto_document_type") {
+			// Use the portal's custom searchable dropdown. Frappe keeps Selects in a
+			// flex row, so tag that row/combobox for full-width styling.
+			$select.removeAttr("data-vmnp-no-search");
+			const $control_input = $select.closest(".control-input");
+			$control_input.addClass("vmnp-rto-document-control");
+			previous_make_select_searchable.call(this, select);
+			$select.next(".vmnp-combo").addClass("vmnp-rto-document-combo");
+			$select.siblings(".select-icon").attr("aria-hidden", "true");
+			return;
+		}
+		if ($select.is('[data-vmnp-no-search="1"]')) return;
 		return previous_make_select_searchable.call(this, select);
 	};
 
@@ -11737,6 +11792,492 @@ proto.render_form = function (data) {
 					});
 				}, true);
 			}
+		}
+		return result;
+	};
+})();
+
+/* VMNP maintenance editable total guard 2026-08-24 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpMaintenanceEditableTotal20260824) return;
+	window.__vmnpMaintenanceEditableTotal20260824 = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const TOTAL_FIELD = "md_total_repairingamount";
+
+	proto.render_form = function (data) {
+		const entered_total = data?.values?.[TOTAL_FIELD] ?? "";
+		const result = previous_render_form.call(this, data);
+		if (data?.key !== "maintenance") return result;
+
+		const control = this.controls?.[TOTAL_FIELD];
+		try { control?.set_value?.(entered_total); } catch (error) {}
+		if (control) control.value = entered_total;
+		this.$view
+			.find(`[data-control-field="${TOTAL_FIELD}"] input, [data-control-field="${TOTAL_FIELD}"] textarea`)
+			.prop("readonly", false)
+			.removeAttr("aria-readonly")
+			.val(entered_total);
+		return result;
+	};
+})();
+
+
+/* VMNP User Details: app-role checkboxes on the user form + save wiring. 2026-08-25 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpUserRoles20260825) return;
+	window.__vmnpUserRoles20260825 = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_power_control_changed = proto.power_control_changed;
+
+	if (!document.getElementById("vmnp-user-roles-style")) {
+		$("<style>")
+			.attr("id", "vmnp-user-roles-style")
+			.text(`
+				.vmnp-roles-slot { grid-column: 1 / -1; }
+				.vmnp-roles-box {
+					display: grid;
+					grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+					gap: 9px 16px;
+					padding: 13px 15px;
+					background: var(--vmnp-surface-soft);
+					border: 1px solid var(--vmnp-border);
+					border-radius: 11px;
+				}
+				.vmnp-role-check {
+					display: flex; align-items: center; gap: 9px; margin: 0;
+					font-size: 13px; color: var(--vmnp-text); cursor: pointer;
+				}
+				.vmnp-role-check input {
+					width: 16px; height: 16px; margin: 0;
+					accent-color: var(--vmnp-primary); cursor: pointer;
+				}
+				.vmnp-roles-empty { color: var(--vmnp-muted); font-size: 12px; }
+				.vmnp-roles-hint { margin-top: 6px; color: var(--vmnp-muted); font-size: 11px; }
+			`)
+			.appendTo(document.head);
+	}
+
+	proto.render_vmn_user_roles = async function (data) {
+		const $grid = this.$view.find(".vmnp-form-grid").last();
+		if (!$grid.length) return;
+		// Re-render safety: purana block hata do.
+		this.$view.find("[data-vmnp-roles]").remove();
+
+		const $slot = $(`
+			<div class="vmnp-control-slot vmnp-roles-slot" data-vmnp-roles>
+				<label class="vmnp-field-label">${__("App Roles")}</label>
+				<div class="vmnp-roles-box"><span class="vmnp-roles-empty">${__("Loading roles…")}</span></div>
+				<small class="vmnp-roles-hint">${__("Tick the Vehicle Management roles for this user — saved with the user.")}</small>
+			</div>
+		`);
+		$grid.append($slot);
+		const $box = $slot.find(".vmnp-roles-box");
+
+		// Synthetic control — base save_form ise values me apne aap bhej dega.
+		this.controls["ud_selected_roles"] = {
+			get_value: () =>
+				JSON.stringify(
+					$box.find("input[type=checkbox]:checked").map((index, el) => el.value).get()
+				),
+			set_value: () => {},
+		};
+
+		let roles = [];
+		try {
+			const resp = (await this.api("get_app_roles")) || {};
+			if (Array.isArray(resp)) {
+				roles = resp;
+			} else {
+				roles = resp.roles || [];
+				if (!resp.can_manage) {
+					$slot.remove();
+					if (this.controls) delete this.controls["ud_selected_roles"];
+					return;
+				}
+			}
+		} catch (error) {
+			$box.html(`<span class="vmnp-roles-empty">${__("Could not load roles.")}</span>`);
+			return;
+		}
+		if (!roles.length) {
+			$box.html(`<span class="vmnp-roles-empty">${__("No app roles found.")}</span>`);
+			return;
+		}
+
+		// Currently chosen user ke roles pre-check (live control value ko prefer karo).
+		let checked = new Set();
+		let current_user = "";
+		try { current_user = String(this.control_value("ud_user_name") || "").trim(); } catch (error) {}
+		if (!current_user) current_user = String(data?.values?.ud_user_name || "").trim();
+		if (current_user) {
+			try {
+				const have = (await this.api("get_user_app_roles", { user: current_user })) || [];
+				checked = new Set(have);
+			} catch (error) {}
+		}
+
+		$box.empty();
+		roles.forEach((role) => {
+			const name = role && role.name ? role.name : String(role);
+			const id = `vmnp-role-${name.replace(/[^a-z0-9]+/gi, "-")}`;
+			const $label = $(`
+				<label class="vmnp-role-check" for="${id}">
+					<input type="checkbox" id="${id}" value="${frappe.utils.escape_html(name)}">
+					<span>${frappe.utils.escape_html(name)}</span>
+				</label>
+			`);
+			if (checked.has(name)) $label.find("input").prop("checked", true);
+			$box.append($label);
+		});
+	};
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (data && data.key === "users") {
+			window.setTimeout(() => this.render_vmn_user_roles(data), 0);
+		} else if (this.controls) {
+			delete this.controls["ud_selected_roles"];
+		}
+		return result;
+	};
+
+	proto.power_control_changed = function (key, fieldname) {
+		previous_power_control_changed.call(this, key, fieldname);
+		if (key === "users" && (fieldname === "ud_user_name" || fieldname === "ud_create_new_user")) {
+			window.setTimeout(() => this.render_vmn_user_roles(this._power_form_data || {}), 0);
+		}
+	};
+})();
+
+
+/* VMNP User Details: clean Create-New-User checkbox, full-width User Type,
+   and Assigned Campus that lists ALL campuses (no "select vehicle first"). 2026-08-25 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpUserFields20260825) return;
+	window.__vmnpUserFields20260825 = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_render_form = proto.render_form;
+	const previous_load_campus_options = proto.load_campus_options;
+
+	if (!document.getElementById("vmnp-user-fields-style")) {
+		$("<style>")
+			.attr("id", "vmnp-user-fields-style")
+			.text(`
+				.vmnp-usercheck {
+					display: inline-flex; align-items: center; gap: 10px;
+					height: 42px; margin: 0; cursor: pointer;
+				}
+				.vmnp-usercheck input {
+					width: 18px; height: 18px; margin: 0;
+					accent-color: var(--vmnp-primary); cursor: pointer;
+				}
+				.vmnp-usercheck span { font-size: 13px; color: var(--vmnp-text); }
+				.vmnp-plain-select {
+					width: 100%; height: 42px; padding: 0 12px; font-size: 13px;
+					color: var(--vmnp-text); background: var(--vmnp-surface-soft);
+					border: 1px solid var(--vmnp-border); border-radius: 11px; cursor: pointer;
+				}
+				.vmnp-plain-select:focus {
+					border-color: var(--vmnp-primary);
+					box-shadow: 0 0 0 3px rgba(92, 77, 230, 0.13); outline: none;
+				}
+			`)
+			.appendTo(document.head);
+	}
+
+	// Assigned Campus (User Details) me vehicle chain nahi hai — saare campus seedhe load karo.
+	proto.load_campus_options = async function (fieldname, selected_value = "") {
+		if (fieldname === "ud_campus") {
+			const control = this.controls[fieldname];
+			if (control && typeof control.set_campus_options === "function") {
+				control.set_loading(__("Loading campuses…"));
+				try {
+					const response = await this.cached_master_list("Campus Details VMN", {
+						fields: ["name", "cd_campus_name", "cd_location"],
+						order_by: "cd_campus_name asc",
+						limit: 500,
+					});
+					const rows = Array.isArray(response) ? response : response && response.message ? response.message : [];
+					control.set_campus_options(rows, selected_value || "");
+					if (typeof this.enhance_selects === "function") this.enhance_selects();
+				} catch (error) {
+					control.set_loading(__("Unable to load campuses"));
+				}
+				return;
+			}
+		}
+		return previous_load_campus_options.call(this, fieldname, selected_value);
+	};
+
+	proto.fix_vmn_user_fields = function (data) {
+		const portal = this;
+
+		// 1) Create New User -> saaf checkbox.
+		const $cnu = this.$view.find('[data-control-field="ud_create_new_user"]');
+		if ($cnu.length && !$cnu.find(".vmnp-usercheck").length) {
+			const current = Number((data && data.values && data.values.ud_create_new_user) || 0) === 1;
+			$cnu.html(`
+				<label class="vmnp-field-label">${__("Create New User")}</label>
+				<label class="vmnp-usercheck">
+					<input type="checkbox" ${current ? "checked" : ""}>
+					<span>${__("Enable to create a new user")}</span>
+				</label>
+				<small class="vmnp-field-help">${__("Enable this to create a new ERPNext user and send the welcome email.")}</small>
+			`);
+			const $chk = $cnu.find("input[type=checkbox]");
+			this.controls["ud_create_new_user"] = {
+				$input: $chk,
+				get_value: () => ($chk.prop("checked") ? 1 : 0),
+				set_value: (next) => $chk.prop("checked", Number(next) === 1),
+			};
+			$chk.on("change", () => {
+				try { portal.power_control_changed("users", "ud_create_new_user"); } catch (error) {}
+			});
+		}
+
+		// 2) User Type -> saaf full-width native select (combo nahi).
+		const $ut = this.$view.find('[data-control-field="ud_user_type"]');
+		if ($ut.length && !$ut.find(".vmnp-usertype-select").length) {
+			let opts = $ut
+				.find("select option")
+				.toArray()
+				.map((option) => ({ value: option.value, label: (option.textContent || "").trim() }));
+			if (!opts.length) opts = [{ value: "", label: "" }, { value: "User", label: "User" }, { value: "Approve", label: "Approve" }];
+			const current = String((data && data.values && data.values.ud_user_type) || "");
+			const has_current = opts.some((option) => option.value === current);
+			const option_html = opts
+				.map((option) =>
+					option.value === ""
+						? `<option value="">${__("Select")}</option>`
+						: `<option value="${frappe.utils.escape_html(option.value)}" ${option.value === current ? "selected" : ""}>${frappe.utils.escape_html(option.label || option.value)}</option>`
+				)
+				.join("");
+			$ut.html(`
+				<label class="vmnp-field-label">${__("User Type")}<b class="vmnp-required">*</b></label>
+				<select class="vmnp-plain-select vmnp-usertype-select" data-vmnp-no-search="1">${option_html}</select>
+			`);
+			const $sel = $ut.find(".vmnp-usertype-select");
+			if (current && !has_current) $sel.append(new Option(current, current));
+			$sel.val(current);
+			this.controls["ud_user_type"] = {
+				$input: $sel,
+				get_value: () => $sel.val() || "",
+				set_value: (next) => $sel.val(String(next == null ? "" : next)),
+			};
+		}
+
+		// 3) Create-new toggle initial state + campus (all) load.
+		try { this.toggle_vehicle_user_creation_fields(); } catch (error) {}
+		if (typeof this.load_campus_options === "function") {
+			window.setTimeout(() => this.load_campus_options("ud_campus", (data && data.values && data.values.ud_campus) || ""), 0);
+		}
+	};
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		if (data && data.key === "users") {
+			window.setTimeout(() => this.fix_vmn_user_fields(data), 0);
+		}
+		return result;
+	};
+})();
+
+
+/* VMNP Fuel Stations: Settings menu item (location-wise) + Diesel form filters
+   fuel stations by the vehicle's location. 2026-08-25 */
+
+/* 1) Inject "Fuel Stations" into the Settings menu (client-side, like Vendors). */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpFuelMenu20260825) return;
+	window.__vmnpFuelMenu20260825 = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_load_portal = proto.load_portal;
+
+	const KEY = "fuel_stations";
+	const DOCTYPE = "Fuel Station VMN";
+
+	proto.load_portal = async function () {
+		const result = await previous_load_portal.call(this);
+		try {
+			const menu = this.bootstrap && this.bootstrap.menu;
+			if (!menu || (this.menu_items && this.menu_items[KEY])) return result;
+
+			let allowed = true;
+			if (frappe.model && frappe.model.with_doctype) {
+				await new Promise((resolve) => frappe.model.with_doctype(DOCTYPE, resolve));
+			}
+			if (frappe.perm && frappe.perm.get_perm) {
+				const level0 = frappe.perm.get_perm(DOCTYPE)[0];
+				allowed = !!(level0 && level0.read);
+			}
+			if (!allowed) return result;
+
+			const columns = [
+				{ fieldname: "name", label: __("ID"), fieldtype: "Data", options: "", reqd: 0, read_only: 1 },
+				{ fieldname: "fuel_station_name", label: __("Fuel Station"), fieldtype: "Data", options: "" },
+				{ fieldname: "location", label: __("Location"), fieldtype: "Link", options: "Location Details VMN" },
+			];
+			const item = {
+				key: KEY,
+				label: __("Fuel Stations"),
+				icon: "flag",
+				description: __("Location-wise fuel stations."),
+				doctype: DOCTYPE,
+				can_create: true,
+				columns,
+				filter_fields: [columns[1], columns[2]],
+				date_field: null,
+			};
+
+			const settings = menu.find((group) => /setting/i.test(group.label || "")) || menu[menu.length - 1];
+			if (!settings) return result;
+			if (!(settings.items || []).some((entry) => entry.key === KEY)) {
+				settings.items.push(item);
+				this.menu_items[KEY] = item;
+				this.render_navigation();
+				if (this.current_view && this.current_view.type === "dashboard") this.show_dashboard(false);
+			}
+		} catch (error) {
+			// Inject na ho to baaki menu waise hi chalta rahe.
+		}
+		return result;
+	};
+})();
+
+/* 2) Diesel form: fuel station dropdown ko vehicle ki location se filter karo. */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpFuelFilter20260825) return;
+	window.__vmnpFuelFilter20260825 = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_load_master = proto.load_master_select_options;
+	const previous_power_changed = proto.power_control_changed;
+
+	const norm = (value) => String(value == null ? "" : value).trim().toLowerCase();
+
+	proto.reload_diesel_fuel_stations = async function () {
+		if (!this._power_form_data || this._power_form_data.key !== "fuel_diesel") return;
+		const control = this.controls && this.controls.dd_fuel_station_name;
+		if (!control || typeof control.set_master_options !== "function") return;
+
+		let location = "";
+		let selected = "";
+		try { location = norm(this.control_value("dd_vehicle_location")); } catch (error) {}
+		try { selected = String(this.control_value("dd_fuel_station_name") || ""); } catch (error) {}
+
+		try {
+			const rows = await frappe.db.get_list("Fuel Station VMN", {
+				fields: ["name", "fuel_station_name", "location"],
+				order_by: "fuel_station_name asc",
+				limit: 500,
+			});
+			const all = Array.isArray(rows) ? rows : [];
+			let list = location ? all.filter((row) => norm(row.location) === location) : all;
+			// Saved value hamesha list me rahe, warna edit me mit jaati.
+			if (selected && !list.some((row) => String(row.name) === selected)) {
+				const saved = all.find((row) => String(row.name) === selected);
+				if (saved) list = [saved].concat(list);
+			}
+			control.set_master_options(list, selected);
+			if (typeof this.enhance_selects === "function") this.enhance_selects();
+		} catch (error) {
+			// chhod do — base loader ne jo bhara wahi rahega.
+		}
+	};
+
+	proto.load_master_select_options = async function (data) {
+		const result = await previous_load_master.call(this, data);
+		if (data && data.key === "fuel_diesel") {
+			await this.reload_diesel_fuel_stations();
+		}
+		return result;
+	};
+
+	proto.power_control_changed = function (key, fieldname) {
+		previous_power_changed.call(this, key, fieldname);
+		if (key === "fuel_diesel" && (fieldname === "dd_vehicle_number" || fieldname === "dd_vehicle_location")) {
+			// Vehicle badalne par location async bharti hai — thoda ruk kar filter karo.
+			window.setTimeout(() => this.reload_diesel_fuel_stations(), 350);
+			window.setTimeout(() => this.reload_diesel_fuel_stations(), 900);
+		}
+	};
+})();
+
+
+/* VMNP: Fuel Station form ka Location (Link) ab native searchable select ban jaye.
+   Frappe ka Link+awesomplete dropdown form card ke overflow:hidden me clip ho raha
+   tha ("select field chup rahi thi"). Baaki dropdowns jaisa fixed-panel combo. 2026-08-25 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpLocSelect20260825) return;
+	window.__vmnpLocSelect20260825 = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_make_control = proto.make_control;
+	const previous_render_form = proto.render_form;
+
+	const is_location_link = (field) =>
+		field && field.fieldname === "location" && String(field.options || "") === "Location Details VMN";
+
+	proto.make_control = function ($slot, field, value) {
+		if (!is_location_link(field)) return previous_make_control.call(this, $slot, field, value);
+
+		const label = frappe.utils.escape_html(field.label || field.fieldname);
+		$slot.html(`
+			<label class="vmnp-field-label">${label}${field.reqd ? '<b class="vmnp-required">*</b>' : ""}</label>
+			<select class="vmnp-select vmnp-location-link-select" aria-label="${label}"
+				${field.reqd ? "required" : ""} ${field.read_only ? "disabled" : ""}>
+				<option value="">${__("Loading…")}</option>
+			</select>
+			${field.description ? `<small class="vmnp-field-help">${frappe.utils.escape_html(field.description)}</small>` : ""}
+		`);
+
+		const $select = $slot.find(".vmnp-location-link-select");
+		this.controls[field.fieldname] = {
+			$input: $select,
+			get_value: () => $select.val() || "",
+			set_value: (next) => {
+				const next_value = String(next == null ? "" : next);
+				if (next_value && !$select.find("option").toArray().some((option) => option.value === next_value)) {
+					$select.append(new Option(next_value, next_value));
+				}
+				$select.val(next_value);
+			},
+			set_location_options: (rows, selected = "") => {
+				$select.empty().append(new Option(__("Select Location"), ""));
+				const seen = new Set();
+				(rows || []).forEach((row) => {
+					const option_value = String(row.name || "").trim();
+					if (!option_value || seen.has(option_value)) return;
+					seen.add(option_value);
+					$select.append(new Option(String(row.location_name || option_value).trim(), option_value));
+				});
+				const wanted = String(selected || "");
+				if (wanted && !seen.has(wanted)) $select.append(new Option(wanted, wanted));
+				$select.val(wanted);
+				$select.prop("disabled", Boolean(field.read_only));
+			},
+			set_loading: (message) => $select.empty().append(new Option(message, "")).prop("disabled", true),
+		};
+		this.controls[field.fieldname].set_value(value);
+	};
+
+	proto.render_form = function (data) {
+		const result = previous_render_form.call(this, data);
+		const present = (data.sections || []).flatMap((section) => section.fields || []).some((field) => is_location_link(field));
+		if (present) {
+			window.setTimeout(async () => {
+				const control = this.controls && this.controls.location;
+				if (!control || typeof control.set_location_options !== "function") return;
+				try {
+					const rows = await frappe.db.get_list("Location Details VMN", {
+						fields: ["name", "location_name"],
+						order_by: "location_name asc",
+						limit: 500,
+					});
+					control.set_location_options(rows, (data.values && data.values.location) || "");
+					if (typeof this.enhance_selects === "function") this.enhance_selects();
+				} catch (error) {}
+			}, 0);
 		}
 		return result;
 	};

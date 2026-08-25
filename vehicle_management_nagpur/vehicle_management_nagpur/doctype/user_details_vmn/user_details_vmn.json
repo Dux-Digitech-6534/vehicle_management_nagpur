@@ -5,24 +5,56 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "ud_create_new_user",
+  "ud_new_user_name",
+  "ud_new_user_email",
   "ud_user_name",
   "ud_user_type",
+  "ud_campus",
   "ud_user_email",
   "ud_personal_email"
  ],
  "fields": [
   {
+   "default": "0",
+   "description": "Enable this to create a new ERPNext user and send the welcome email.",
+   "fieldname": "ud_create_new_user",
+   "fieldtype": "Check",
+   "label": "Create New User"
+  },
+  {
+   "description": "Full name for the new ERPNext user.",
+   "fieldname": "ud_new_user_name",
+   "fieldtype": "Data",
+   "label": "New User Name"
+  },
+  {
+   "description": "This email will be the new user's login ID.",
+   "fieldname": "ud_new_user_email",
+   "fieldtype": "Data",
+   "label": "New User Email",
+   "options": "Email"
+  },
+  {
+   "description": "Select an existing ERPNext user when Create New User is disabled.",
    "fieldname": "ud_user_name",
    "fieldtype": "Link",
    "label": "User Name",
-   "options": "User",
-   "reqd": 1
+   "options": "User"
   },
   {
    "fieldname": "ud_user_type",
    "fieldtype": "Select",
    "label": "User Type",
    "options": "\nUser\nApprove",
+   "reqd": 1
+  },
+  {
+   "description": "The user will only be permitted to access records linked to this campus.",
+   "fieldname": "ud_campus",
+   "fieldtype": "Link",
+   "label": "Assigned Campus",
+   "options": "Campus Details VMN",
    "reqd": 1
   },
   {
@@ -43,7 +75,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-31 12:00:00.000000",
+ "modified": "2026-08-24 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Vehicle Management Nagpur",
  "name": "User Details VMN",

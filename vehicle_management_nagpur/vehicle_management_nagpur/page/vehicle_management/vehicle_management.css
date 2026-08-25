@@ -2501,6 +2501,26 @@ textarea.vmnp-input {
 	position: relative;
 }
 
+/* RTO Document Type is rendered through Frappe's flex-based Select wrapper.
+   Keep the portal combobox stretched across the complete form column and hide
+   Frappe's redundant native-select caret. */
+.vmnp-rto-document-control {
+	display: flex !important;
+	width: 100%;
+	min-width: 0;
+}
+
+.vmnp-rto-document-control > .vmnp-rto-document-combo,
+.vmnp-page [data-control-field="rto_document_type"] .vmnp-combo {
+	flex: 1 1 auto;
+	width: 100%;
+	min-width: 0;
+}
+
+.vmnp-rto-document-control > .select-icon {
+	display: none !important;
+}
+
 .vmnp-combo-list {
 	/* fixed — form card par overflow: hidden hai, absolute list usme kat jaati thi.
 	   Exact coords JS position_list() set karta hai. */
@@ -2935,6 +2955,10 @@ body.vmnp-portal-active .vmnp-view {
 	border: 1px solid var(--vmnp-border-strong);
 	border-radius: 12px;
 	box-shadow: var(--vmnp-shadow);
+}
+
+.vmnp-combo-panel[hidden] {
+	display: none !important;
 }
 
 .vmnp-combo-search {

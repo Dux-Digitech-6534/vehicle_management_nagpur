@@ -36,6 +36,7 @@ doc_events = {
 	"User Details VMN": {
 		"after_insert": "vehicle_management_nagpur.workflow_setup.sync_user_detail_role",
 		"on_update": "vehicle_management_nagpur.workflow_setup.sync_user_detail_role",
+		"on_trash": "vehicle_management_nagpur.workflow_setup.remove_user_detail_permission",
 	}
 }
 
@@ -281,5 +282,4 @@ after_migrate = "vehicle_management_nagpur.workflow_setup.sync_all_user_detail_r
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
 
