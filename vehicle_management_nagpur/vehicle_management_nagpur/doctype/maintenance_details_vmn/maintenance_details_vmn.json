@@ -147,8 +147,7 @@
   {
    "fieldname": "md_total_repairingamount",
    "fieldtype": "Currency",
-   "label": "Total Repairing Amount",
-   "read_only": 1
+   "label": "Total Repairing Amount"
   },
   {
    "fieldname": "md_select_campus",
@@ -156,7 +155,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Campus",
-   "options": "Campus Details VMN"
+   "options": "Campus Details VMN",
+   "reqd": 1
   },
   {
    "depends_on": "eval:doc.workflow_state == 'Rejected'",
@@ -181,8 +181,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-12 14:57:32.843314",
- "modified_by": "sahupoojashree9@gmail.com",
+ "modified": "2026-08-24 00:00:00.000000",
+ "modified_by": "Administrator",
  "module": "Vehicle Management Nagpur",
  "name": "Maintenance Details VMN",
  "naming_rule": "Expression",

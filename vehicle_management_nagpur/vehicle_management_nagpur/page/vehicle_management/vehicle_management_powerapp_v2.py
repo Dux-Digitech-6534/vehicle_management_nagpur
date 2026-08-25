@@ -35,20 +35,58 @@ def _duration_hours(start_value, end_value):
     return round(duration / 3600, 2)
 
 
+def _previous_diesel_fill_up_reading(doc):
+    vehicle = cstr(doc.get("dd_vehicle_number")).strip()
+    if not vehicle:
+        return None
+
+    filters = {"dd_vehicle_number": vehicle}
+    if cstr(doc.get("name")):
+        filters["name"] = ["!=", doc.name]
+
+    rows = frappe.get_all(
+        "Diesel Details VMN",
+        filters=filters,
+        fields=["dd_fuel_fill_up_reading"],
+        order_by="dd_date desc, creation desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    value = rows[0].get("dd_fuel_fill_up_reading")
+    return flt(value) if value not in (None, "") else None
+
+
 def _apply_power_app_calculations(doc):
     if doc.doctype == "Log Details VMN":
         doc.ld_distance = flt(doc.end_reading) - flt(doc.start_reading)
         if doc.meta.has_field("ld_total_hours"):
             doc.ld_total_hours = _duration_hours(doc.start_time, doc.end_time)
     elif doc.doctype == "DG Details VMN":
-        doc.dg_total_dg_unit = max(0, flt(doc.dg_end_reading) - flt(doc.dg_start_reading))
+        start = cstr(doc.get("dg_start_reading")).strip()
+        end = cstr(doc.get("dg_end_reading")).strip()
+        if start and end and flt(doc.dg_end_reading) >= flt(doc.dg_start_reading):
+            units = flt(doc.dg_end_reading) - flt(doc.dg_start_reading)
+            doc.dg_total_dg_unit = units
+            doc.dg_diesel_consumption = units
+        else:
+            doc.dg_total_dg_unit = 0
+            doc.dg_diesel_consumption = 0
         doc.dg_total_hours = _duration_hours(doc.dg_start_time, doc.dg_end_time)
         if flt(doc.dg_diesel_consumption) and flt(doc.dg_diesel_rateltr):
             doc.dg_total_amount = flt(doc.dg_diesel_consumption) * flt(doc.dg_diesel_rateltr)
     elif doc.doctype == "Diesel Details VMN":
         doc.dd_amount = flt(doc.dd_quantity) * flt(doc.dd_rate)
+        previous = _previous_diesel_fill_up_reading(doc)
+        if previous is not None and not flt(doc.dd_previous_fuel_fill_up_reading):
+            doc.dd_previous_fuel_fill_up_reading = previous
         travelled = flt(doc.dd_fuel_fill_up_reading) - flt(doc.dd_previous_fuel_fill_up_reading)
-        doc.dd_average = round(travelled / flt(doc.dd_quantity), 2) if flt(doc.dd_quantity) else 0
+        if flt(doc.dd_quantity) and travelled >= 0:
+            doc.dd_average = round(travelled / flt(doc.dd_quantity), 2)
+        else:
+            previous_doc = doc.get_doc_before_save() if not doc.is_new() else None
+            saved_average = previous_doc.get("dd_average") if previous_doc else doc.get("dd_average")
+            doc.dd_average = saved_average if saved_average not in (None, "") else 0
 
 
 @frappe.whitelist()
@@ -204,6 +242,9 @@ def save_document(key, values, name=None, submit=0):
     if base._uses_approval(config):
         base._ensure_approval_state(doc)
     doc.save()
+
+    if key == "users":
+        base._vmn_post_save_user(doc, values)
 
     if cint(submit):
         if not meta.is_submittable:

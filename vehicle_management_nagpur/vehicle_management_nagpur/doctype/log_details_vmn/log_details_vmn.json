@@ -131,12 +131,12 @@
   },
   {
    "fieldname": "start_time",
-   "fieldtype": "Time",
+   "fieldtype": "Datetime",
    "label": "Start Time"
   },
   {
    "fieldname": "end_time",
-   "fieldtype": "Time",
+   "fieldtype": "Datetime",
    "label": "End Time"
   },
   {
@@ -224,8 +224,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-04 10:39:23.483132",
- "modified_by": "ritesh.sharma@duxdigitech.com",
+ "modified": "2026-08-17 10:18:33.337790",
+ "modified_by": "sahupoojashree9@gmail.com",
  "module": "Vehicle Management Nagpur",
  "name": "Log Details VMN",
  "naming_rule": "Expression",

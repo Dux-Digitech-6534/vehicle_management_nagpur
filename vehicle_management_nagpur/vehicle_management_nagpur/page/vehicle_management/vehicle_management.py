@@ -178,6 +178,37 @@ def _can_edit_document(config, doc):
     return True
 
 
+def _diesel_previous_fill_up_reading(doc):
+    vehicle = cstr(doc.get("dd_vehicle_number")).strip()
+    if not vehicle:
+        return None
+    filters = {"dd_vehicle_number": vehicle}
+    if cstr(doc.get("name")).strip():
+        filters["name"] = ["!=", doc.name]
+    rows = frappe.get_all(
+        "Diesel Details VMN",
+        filters=filters,
+        fields=["dd_fuel_fill_up_reading"],
+        order_by="dd_date desc, creation desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    value = rows[0].get("dd_fuel_fill_up_reading")
+    return flt(value) if value not in (None, "") else None
+
+
+def _apply_diesel_previous_display(doc, values):
+    if doc.doctype != "Diesel Details VMN":
+        return
+    current = values.get("dd_previous_fuel_fill_up_reading")
+    if current not in (None, "") and flt(current) != 0:
+        return
+    previous = _diesel_previous_fill_up_reading(doc)
+    if previous is not None:
+        values["dd_previous_fuel_fill_up_reading"] = previous
+
+
 DOCUMENT_CONFIG = {
     "vehicle_logs": {
         "label": "Log Details",
@@ -249,7 +280,7 @@ DOCUMENT_CONFIG = {
             "rto_date",
             "rto_vehicle_number",
             "rto_vehicle_name",
-            "document_type",
+            "rto_document_type",
             "issued_date",
             "expired_date",
             "amount",
@@ -259,7 +290,7 @@ DOCUMENT_CONFIG = {
             "name",
             "rto_vehicle_number",
             "rto_vehicle_name",
-            "document_type",
+            "rto_document_type",
             "trust_name",
             "rto_select_campus",
         ],
@@ -335,6 +366,7 @@ DOCUMENT_CONFIG = {
         "list_fields": [
             "ud_user_name",
             "ud_user_type",
+            "ud_campus",
             "ud_user_email",
             "ud_personal_email",
         ],
@@ -342,6 +374,7 @@ DOCUMENT_CONFIG = {
             "name",
             "ud_user_name",
             "ud_user_type",
+            "ud_campus",
             "ud_user_email",
             "ud_personal_email",
         ],
@@ -436,7 +469,6 @@ MENU_GROUPS = [
             "locations",
             "trust_names",
             "dg_information",
-            "supervisors",
         ],
     },
 ]
@@ -768,6 +800,8 @@ def get_document(key, name):
             }
             for row in (doc.get("md_work_details_table") or [])
         ]
+    elif key == "fuel_diesel":
+        _apply_diesel_previous_display(doc, values)
 
     approval_state = _approval_state(doc) if _uses_approval(config) else ""
     if approval_state and _field_exists(meta, APPROVAL_STATE_FIELD):
@@ -814,6 +848,8 @@ def get_document_form(key, name=None):
             }
             for row in (doc.get("md_work_details_table") or [])
         ]
+    elif key == "fuel_diesel":
+        _apply_diesel_previous_display(doc, values)
 
     approval_state = _approval_state(doc) if _uses_approval(config) else ""
     if approval_state and _field_exists(meta, APPROVAL_STATE_FIELD):
@@ -850,6 +886,16 @@ def save_document(key, values, name=None, submit=0):
     config = _get_config(key)
     meta = _get_meta(config)
     values = frappe.parse_json(values) if isinstance(values, str) else (values or {})
+
+    # DG Date is a Date field. Its default can arrive as a full datetime; keep only
+    # the selected calendar date before Frappe performs Date-field validation.
+    if key == "dg_operations" and values.get("dgd_date"):
+        raw_date = cstr(values.get("dgd_date")).strip()
+        date_part = raw_date[:10]
+        if len(date_part) == 10 and date_part[4:5] == "-" and date_part[7:8] == "-":
+            values["dgd_date"] = date_part
+        elif len(date_part) == 10 and date_part[2:3] in {"/", "-"} and date_part[5:6] in {"/", "-"}:
+            values["dgd_date"] = f"{date_part[6:10]}-{date_part[3:5]}-{date_part[0:2]}"
     is_new = not cstr(name)
 
     if is_new:
@@ -892,6 +938,10 @@ def save_document(key, values, name=None, submit=0):
         _ensure_approval_state(doc)
 
     doc.save()
+
+    if key == "users":
+        _vmn_post_save_user(doc, values)
+
     if cint(submit):
         if not meta.is_submittable:
             frappe.throw(_("{0} cannot be submitted.").format(_(config["label"])))
@@ -905,3 +955,183 @@ def save_document(key, values, name=None, submit=0):
         "docstatus": doc.docstatus,
         "message": _("{0} saved successfully.").format(_(config["label"])),
     }
+
+
+# ---------------------------------------------------------------------------
+# User Details = single place to create a user, scope them to a campus
+# (User Permission), pick app roles (checkboxes) and register them as a
+# supervisor app-wide. Added 2026-08-25.
+# ---------------------------------------------------------------------------
+
+VMN_MODULE = "Vehicle Management Nagpur"
+
+# Standard/system roles never offered as selectable "app roles".
+VMN_SYSTEM_ROLES = {
+    "System Manager", "Administrator", "All", "Guest", "Desk User",
+    "Report Manager", "Workflow Manager", "Dashboard Manager", "Script Manager",
+    "Website Manager", "Newsletter Manager", "Blogger",
+    "Knowledge Base Contributor", "Knowledge Base Editor", "Prepared Report User",
+}
+
+
+def _vmn_app_doctypes():
+    return [d.name for d in frappe.get_all("DocType", filters={"module": VMN_MODULE}, fields=["name"])]
+
+
+def _vmn_app_roles():
+    """Roles that hold permission on any Vehicle Management Nagpur doctype, minus
+    standard/system roles. New "VMN ..." roles show up automatically the moment
+    they are granted permission on an app doctype."""
+    doctypes = _vmn_app_doctypes()
+    roles = set()
+    for dt in doctypes:
+        try:
+            for perm in (frappe.get_meta(dt).permissions or []):
+                if perm.role:
+                    roles.add(perm.role)
+        except Exception:
+            continue
+    if doctypes:
+        for row in frappe.get_all(
+            "Custom DocPerm", filters={"parent": ["in", doctypes]}, fields=["role"], distinct=True
+        ):
+            if row.role:
+                roles.add(row.role)
+    roles = {r for r in roles if r not in VMN_SYSTEM_ROLES}
+    result = []
+    for role in sorted(roles):
+        info = frappe.db.get_value("Role", role, ["name", "disabled"], as_dict=True)
+        if info and not cint(info.disabled):
+            result.append(info.name)
+    return result
+
+
+def _vmn_can_manage_roles():
+    """Only System Manager / VMN Admin may hand out app roles (prevents a
+    low-privilege user from self-escalating via the User Details form)."""
+    return bool(set(frappe.get_roles()) & {"System Manager", "Administrator", "VMN Admin"})
+
+
+@frappe.whitelist()
+def get_app_roles():
+    _require_authenticated_user()
+    return {
+        "roles": [{"name": r} for r in _vmn_app_roles()],
+        "can_manage": 1 if _vmn_can_manage_roles() else 0,
+    }
+
+
+@frappe.whitelist()
+def get_user_app_roles(user=None):
+    _require_authenticated_user()
+    user = cstr(user).strip()
+    if not user or not frappe.db.exists("User", user):
+        return []
+    app_roles = set(_vmn_app_roles())
+    have = {
+        r.role
+        for r in frappe.get_all(
+            "Has Role", filters={"parent": user, "parenttype": "User"}, fields=["role"]
+        )
+    }
+    return sorted(app_roles & have)
+
+
+def _vmn_sync_user_permission(user, allow_doctype, for_value):
+    """Ensure exactly one User Permission (user, allow_doctype -> for_value); drop
+    any other value for that same master so the user is scoped to one campus."""
+    if not (user and allow_doctype and for_value):
+        return
+    for perm in frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": allow_doctype},
+        fields=["name", "for_value"],
+    ):
+        if perm.for_value != for_value:
+            frappe.delete_doc("User Permission", perm.name, ignore_permissions=True, force=True)
+    if not frappe.db.exists(
+        "User Permission", {"user": user, "allow": allow_doctype, "for_value": for_value}
+    ):
+        frappe.get_doc(
+            {
+                "doctype": "User Permission",
+                "user": user,
+                "allow": allow_doctype,
+                "for_value": for_value,
+                "apply_to_all_doctypes": 1,
+            }
+        ).insert(ignore_permissions=True)
+
+
+def _vmn_matching_dg_campus(campus):
+    """Best-effort map a Campus Details VMN record to a DG Campus VMN by name."""
+    if not campus:
+        return None
+    if frappe.db.exists("DG Campus VMN", campus):
+        return campus
+    cname = frappe.db.get_value("Campus Details VMN", campus, "cd_campus_name") or campus
+    dg = frappe.db.get_value("DG Campus VMN", {"campus_name": cname}, "name")
+    if dg:
+        return dg
+    if frappe.db.exists("DG Campus VMN", cname):
+        return cname
+    return None
+
+
+def _vmn_sync_supervisor(user):
+    """Register the user in the (now internal) supervisor master so they appear in
+    every supervisor dropdown across the app."""
+    if not user:
+        return
+    if not frappe.db.exists("Supervisor for Campus VMN", {"supervisor_name": user}):
+        try:
+            frappe.get_doc(
+                {"doctype": "Supervisor for Campus VMN", "supervisor_name": user}
+            ).insert(ignore_permissions=True)
+        except frappe.exceptions.DuplicateEntryError:
+            pass
+
+
+def _vmn_assign_roles(user, selected):
+    """Set the user's app-roles to exactly `selected`; leave non-app roles alone."""
+    if not user or not frappe.db.exists("User", user):
+        return
+    app_roles = set(_vmn_app_roles())
+    selected = {r for r in (selected or []) if r in app_roles}
+    user_doc = frappe.get_doc("User", user)
+    current = {r.role for r in user_doc.get("roles")}
+    target = (current - app_roles) | selected
+    if target == current:
+        return
+    user_doc.set("roles", [{"role": r} for r in sorted(target)])
+    user_doc.flags.ignore_permissions = True
+    user_doc.save(ignore_permissions=True)
+
+
+def _vmn_post_save_user(doc, values):
+    """After a User Details VMN record is saved from the portal: scope the user to
+    their campus, register them as a supervisor and apply the picked app roles."""
+    user = cstr(doc.get("ud_user_name")).strip()
+    if not user:
+        return
+    campus = cstr(doc.get("ud_campus")).strip()
+    if campus:
+        _vmn_sync_user_permission(user, "Campus Details VMN", campus)
+        dg_campus = _vmn_matching_dg_campus(campus)
+        if dg_campus:
+            _vmn_sync_user_permission(user, "DG Campus VMN", dg_campus)
+    _vmn_sync_supervisor(user)
+
+    selected = values.get("ud_selected_roles")
+    if selected is not None and _vmn_can_manage_roles():
+        if isinstance(selected, str):
+            selected = selected.strip()
+            if selected.startswith("["):
+                try:
+                    selected = frappe.parse_json(selected)
+                except Exception:
+                    selected = []
+            else:
+                selected = [s.strip() for s in selected.split(",") if s.strip()]
+        if isinstance(selected, list):
+            _vmn_assign_roles(user, selected)

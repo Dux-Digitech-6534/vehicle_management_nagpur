@@ -19,7 +19,7 @@
   "rto_vehicle_number",
   "rto_select_campus",
   "section_break_fvbx",
-  "document_type",
+  "rto_document_type",
   "expired_date",
   "column_break_trrf",
   "trust_name",
@@ -142,10 +142,11 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "document_type",
+   "fieldname": "rto_document_type",
    "fieldtype": "Select",
    "label": "Document Type",
-   "options": "\nPUC\nFitness\nPermit\nInsurance\nSpecial Permit\nRTO Tax\nRC\nProfessional Tax\nRadium Cert.\nOther"
+   "options": "\nPUC\nFitness\nPermit\nInsurance\nSpecial Permit\nRTO Tax\nGreen Tax\nRC\nProfessional Tax\nRadium Cert.\nOther",
+   "reqd": 1
   },
   {
    "fieldname": "trust_name",
@@ -186,7 +187,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-03 15:34:54.232811",
+ "modified": "2026-08-24 00:00:00.000000",
  "modified_by": "ritesh.sharma@duxdigitech.com",
  "module": "Vehicle Management Nagpur",
  "name": "RTO Details VMN",

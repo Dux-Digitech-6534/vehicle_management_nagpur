@@ -2,10 +2,12 @@
 # For license information, please see license.txt
 
 import re
+from datetime import datetime
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import flt, get_datetime, getdate
 
 
 def _time_seconds(value):
@@ -44,6 +46,62 @@ def _validate_time_order(doc, start_field, end_field):
         frappe.throw(_("For the selected date, End Time cannot be less than Start Time."))
 
 
+def _align_times_to_entry_date(doc):
+    if not doc.dgd_date:
+        return
+
+    selected_date = getdate(doc.dgd_date)
+    for fieldname in ("dg_start_time", "dg_end_time"):
+        value = doc.get(fieldname)
+        if not value:
+            continue
+        selected_time = get_datetime(value).time().replace(microsecond=0)
+        doc.set(fieldname, datetime.combine(selected_date, selected_time))
+
+
+def _previous_end_reading(doc):
+    if not doc.dg_number:
+        return None
+
+    filters = {"dg_number": doc.dg_number}
+    if doc.name and not doc.is_new():
+        filters["name"] = ["!=", doc.name]
+
+    rows = frappe.get_all(
+        "DG Details VMN",
+        filters=filters,
+        fields=["dg_end_reading"],
+        order_by="creation desc",
+        limit_page_length=1,
+    )
+    if not rows:
+        return None
+    value = rows[0].get("dg_end_reading")
+    return value if value not in (None, "") else None
+
+
+def _set_and_validate_readings(doc):
+    previous_end = _previous_end_reading(doc)
+    if (not doc.name or doc.is_new()) and previous_end is not None:
+        doc.dg_start_reading = previous_end
+
+    start = doc.get("dg_start_reading")
+    end = doc.get("dg_end_reading")
+    if start in (None, "") or end in (None, ""):
+        return
+
+    start_value = flt(start)
+    end_value = flt(end)
+    if end_value < start_value:
+        frappe.throw(_("End Reading cannot be less than Start Reading."))
+
+    units = end_value - start_value
+    doc.dg_total_dg_unit = units
+    doc.dg_diesel_consumption = units
+
+
 class DGDetailsVMN(Document):
     def validate(self):
+        _set_and_validate_readings(self)
+        _align_times_to_entry_date(self)
         _validate_time_order(self, "dg_start_time", "dg_end_time")

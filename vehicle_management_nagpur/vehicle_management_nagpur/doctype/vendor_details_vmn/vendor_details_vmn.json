@@ -12,16 +12,16 @@
  "fields": [
   {
    "fieldname": "vendor_name",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Vendor Name",
-   "options": "User",
+   "reqd": 1,
    "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-07 11:56:53.873714",
+ "modified": "2026-08-24 00:00:00.000000",
  "modified_by": "sahupoojashree9@gmail.com",
  "module": "Vehicle Management Nagpur",
  "name": "Vendor Details VMN",
