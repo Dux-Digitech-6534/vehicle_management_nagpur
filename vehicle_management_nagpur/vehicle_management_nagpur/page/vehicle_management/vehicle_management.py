@@ -1166,3 +1166,183 @@ def _vmn_post_save_user(doc, values):
                 _vmn_assign_roles(user, selected)
         except Exception:
             frappe.log_error(frappe.get_traceback(), "VMN: assign roles failed")
+
+
+# ---------------------------------------------------------------------------
+# Reports: date-filtered summaries (KPIs + bar/pie chart data + table) for the
+# five operational modules. Everything goes through frappe.get_list so User
+# Permissions (campus scoping) apply automatically. Added 2026-08-26.
+# ---------------------------------------------------------------------------
+
+VMN_LINK_TITLES = {
+    "Campus Details VMN": "cd_campus_name",
+    "DG Campus VMN": "campus_name",
+    "DG Location At Campus VMN": "dg_location_name",
+    "Trust Name VMN": "tn_trust_name",
+    "Location Details VMN": "location_name",
+}
+
+VMN_REPORTS = {
+    "rpt_vehicle_logs": {
+        "label": "Log Details Report",
+        "doctype": "Log Details VMN",
+        "date_field": "date",
+        "sums": [["ld_distance", "Total Distance (km)"], ["ld_total_hours", "Total Hours"]],
+        "bar": ["vehicle_number", "ld_distance", "Distance by Vehicle"],
+        "pie": ["ld_select_campus", "ld_distance", "Distance by Campus"],
+        "table": [["date", "Date"], ["vehicle_number", "Vehicle"], ["ld_select_campus", "Campus"],
+                  ["ld_vehicle_location", "Location"], ["ld_distance", "Distance"], ["ld_total_hours", "Hours"]],
+    },
+    "rpt_fuel_diesel": {
+        "label": "Diesel Details Report",
+        "doctype": "Diesel Details VMN",
+        "date_field": "dd_date",
+        "sums": [["dd_quantity", "Total Quantity (Ltr)"], ["dd_amount", "Total Amount (Rs)"]],
+        "bar": ["dd_vehicle_number", "dd_amount", "Amount by Vehicle"],
+        "pie": ["dd_fuel_station_name", "dd_amount", "Amount by Fuel Station"],
+        "table": [["dd_date", "Date"], ["dd_vehicle_number", "Vehicle"], ["dd_select_campus", "Campus"],
+                  ["dd_quantity", "Qty (Ltr)"], ["dd_rate", "Rate"], ["dd_amount", "Amount"],
+                  ["dd_fuel_station_name", "Fuel Station"]],
+    },
+    "rpt_maintenance": {
+        "label": "Maintenance Details Report",
+        "doctype": "Maintenance Details VMN",
+        "date_field": "md_date",
+        "sums": [["md_total_repairingamount", "Total Repair Amount (Rs)"]],
+        "bar": ["md_vehicle_number", "md_total_repairingamount", "Repair Cost by Vehicle"],
+        "pie": ["md_select_campus", "md_total_repairingamount", "Repair Cost by Campus"],
+        "table": [["md_date", "Date"], ["md_vehicle_number", "Vehicle"], ["md_select_campus", "Campus"],
+                  ["md_vendor_name", "Vendor"], ["md_total_repairingamount", "Amount"]],
+    },
+    "rpt_rto": {
+        "label": "RTO Details Report",
+        "doctype": "RTO Details VMN",
+        "date_field": "rto_date",
+        "sums": [["amount", "Total Amount (Rs)"]],
+        "bar": ["rto_document_type", "amount", "Amount by Document Type"],
+        "pie": ["rto_select_campus", "amount", "Amount by Campus"],
+        "table": [["rto_date", "Date"], ["rto_vehicle_number", "Vehicle"], ["rto_document_type", "Document"],
+                  ["trust_name", "Trust"], ["amount", "Amount"]],
+    },
+    "rpt_dg": {
+        "label": "DG Details Report",
+        "doctype": "DG Details VMN",
+        "date_field": "dgd_date",
+        "sums": [["dg_total_dg_unit", "Total DG Units"], ["dg_diesel_consumption", "Total Diesel Consumption"]],
+        "bar": ["dgd_dg_campus", "dg_diesel_consumption", "Diesel Consumption by Campus"],
+        "pie": ["dg_location", "dg_total_dg_unit", "DG Units by Location"],
+        "table": [["dgd_date", "Date"], ["dgd_dg_campus", "Campus"], ["dg_location", "Location"],
+                  ["dg_number", "DG No"], ["dg_total_dg_unit", "Units"], ["dg_diesel_consumption", "Consumption"]],
+    },
+}
+
+
+def _vmn_report_titlemap(meta, fieldname, values):
+    """Map Link docnames to a readable title (e.g. CD-2718 -> 'GHRCE, Nagpur')."""
+    df = meta.get_field(fieldname)
+    if not df or df.fieldtype != "Link":
+        return {}
+    title_field = VMN_LINK_TITLES.get(df.options)
+    if not title_field:
+        return {}
+    names = list({v for v in values if v})
+    if not names:
+        return {}
+    return {
+        r.name: (r.get(title_field) or r.name)
+        for r in frappe.get_all(df.options, filters={"name": ["in", names]}, fields=["name", title_field])
+    }
+
+
+def _vmn_group_sum(rows, group_field, value_field, title_map=None, top=12):
+    title_map = title_map or {}
+    agg = {}
+    for r in rows:
+        key = cstr(r.get(group_field) or "").strip() or "—"
+        agg[key] = agg.get(key, 0.0) + flt(r.get(value_field))
+    items = sorted(agg.items(), key=lambda kv: kv[1], reverse=True)
+    if len(items) > top:
+        head = items[:top]
+        head.append(("Others", sum(v for _k, v in items[top:])))
+        items = head
+    labels, values = [], []
+    for k, v in items:
+        labels.append(title_map.get(k, k) if k not in ("—", "Others") else k)
+        values.append(round(v, 2))
+    return labels, values
+
+
+@frappe.whitelist()
+def get_report(key, from_date=None, to_date=None):
+    _require_authenticated_user()
+    cfg = VMN_REPORTS.get(cstr(key))
+    if not cfg:
+        frappe.throw(_("Unknown report."))
+    doctype = cfg["doctype"]
+    if not frappe.has_permission(doctype, ptype="read"):
+        frappe.throw(_("You do not have permission for {0}.").format(_(doctype)), frappe.PermissionError)
+
+    meta = frappe.get_meta(doctype)
+    date_field = cfg["date_field"]
+    from_date = cstr(from_date).strip()[:10]
+    to_date = cstr(to_date).strip()[:10]
+    filters = []
+    if from_date:
+        filters.append([doctype, date_field, ">=", from_date])
+    if to_date:
+        filters.append([doctype, date_field, "<=", to_date])
+
+    wanted = {"name", date_field, cfg["bar"][0], cfg["bar"][1], cfg["pie"][0], cfg["pie"][1]}
+    for f, _l in cfg["sums"]:
+        wanted.add(f)
+    for f, _l in cfg["table"]:
+        wanted.add(f)
+    fields = [f for f in wanted if f == "name" or meta.get_field(f)]
+
+    rows = frappe.get_list(
+        doctype,
+        fields=fields,
+        filters=filters,
+        order_by="`{0}` desc".format(date_field),
+        limit_page_length=0,
+    )
+
+    kpis = [{"label": _("Records"), "value": len(rows), "kind": "count"}]
+    for f, label in cfg["sums"]:
+        kpis.append({"label": _(label), "value": round(sum(flt(r.get(f)) for r in rows), 2), "kind": "sum"})
+
+    bar_map = _vmn_report_titlemap(meta, cfg["bar"][0], [r.get(cfg["bar"][0]) for r in rows])
+    pie_map = _vmn_report_titlemap(meta, cfg["pie"][0], [r.get(cfg["pie"][0]) for r in rows])
+    bar_labels, bar_values = _vmn_group_sum(rows, cfg["bar"][0], cfg["bar"][1], bar_map, top=12)
+    pie_labels, pie_values = _vmn_group_sum(rows, cfg["pie"][0], cfg["pie"][1], pie_map, top=8)
+
+    table_maps = {}
+    for f, _l in cfg["table"]:
+        m = _vmn_report_titlemap(meta, f, [r.get(f) for r in rows])
+        if m:
+            table_maps[f] = m
+    table_rows = []
+    for r in rows[:500]:
+        out = {"name": r.get("name")}
+        for f, _l in cfg["table"]:
+            val = r.get(f)
+            if f in table_maps and val:
+                val = table_maps[f].get(val, val)
+            out[f] = val
+        table_rows.append(out)
+
+    return {
+        "key": cstr(key),
+        "label": _(cfg["label"]),
+        "doctype": doctype,
+        "date_field": date_field,
+        "from_date": from_date,
+        "to_date": to_date,
+        "kpis": kpis,
+        "bar": {"title": _(cfg["bar"][2]), "labels": bar_labels, "values": bar_values},
+        "pie": {"title": _(cfg["pie"][2]), "labels": pie_labels, "values": pie_values},
+        "columns": [{"fieldname": f, "label": _(l)} for f, l in cfg["table"]],
+        "rows": table_rows,
+        "total_rows": len(rows),
+        "shown_rows": len(table_rows),
+    }

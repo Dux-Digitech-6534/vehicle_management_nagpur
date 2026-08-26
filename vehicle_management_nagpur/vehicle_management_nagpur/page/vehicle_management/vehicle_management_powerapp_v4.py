@@ -392,3 +392,9 @@ def get_app_roles():
 def get_user_app_roles(user=None):
     base = powerapp_v3.powerapp_v2.base
     return base.get_user_app_roles(user=user)
+
+
+@frappe.whitelist()
+def get_report(key, from_date=None, to_date=None):
+    base = powerapp_v3.powerapp_v2.base
+    return base.get_report(key, from_date=from_date, to_date=to_date)

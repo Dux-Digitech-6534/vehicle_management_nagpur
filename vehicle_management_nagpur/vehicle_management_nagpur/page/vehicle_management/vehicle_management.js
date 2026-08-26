@@ -12318,3 +12318,231 @@ proto.render_form = function (data) {
 		return result;
 	};
 })();
+
+
+/* VMNP Reports: a "Reports" sidebar group with 5 report views (date filter +
+   KPIs + bar/pie charts via frappe.Chart + table + CSV export). 2026-08-26 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpReports20260826) return;
+	window.__vmnpReports20260826 = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_load_portal = proto.load_portal;
+	const previous_show_list = proto.show_list;
+	const previous_refresh = proto.refresh_current_view;
+
+	const REPORTS = [
+		{ key: "rpt_vehicle_logs", label: "Log Details Report", icon: "list" },
+		{ key: "rpt_fuel_diesel", label: "Diesel Details Report", icon: "list" },
+		{ key: "rpt_maintenance", label: "Maintenance Report", icon: "list" },
+		{ key: "rpt_rto", label: "RTO Details Report", icon: "list" },
+		{ key: "rpt_dg", label: "DG Details Report", icon: "list" },
+	];
+	const REPORT_KEYS = new Set(REPORTS.map((r) => r.key));
+	const PALETTE = ["#5c4de6", "#22c1a4", "#f5a524", "#ef4d6a", "#3aa0ff", "#a855f7", "#14b8a6", "#f97316", "#64748b", "#e11d48", "#0ea5e9", "#84cc16"];
+
+	if (!document.getElementById("vmnp-reports-style")) {
+		$("<style>").attr("id", "vmnp-reports-style").text(`
+			.vmnp-report { width: min(1500px, 100%); margin: 0 auto; }
+			.vmnp-report-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+			.vmnp-report-title { font-size:20px; font-weight:800; color:var(--vmnp-text); }
+			.vmnp-report-desc { font-size:12px; color:var(--vmnp-muted); margin-top:2px; }
+			.vmnp-report-filters { display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; }
+			.vmnp-report-field { display:flex; flex-direction:column; gap:4px; }
+			.vmnp-report-field label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--vmnp-muted); }
+			.vmnp-report-field .vmnp-input { height:38px; min-width:150px; }
+			.vmnp-report-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:16px; }
+			.vmnp-report-kpi { padding:16px 18px; background:var(--vmnp-surface); border:1px solid var(--vmnp-border); border-radius:16px; box-shadow:var(--vmnp-shadow); }
+			.vmnp-report-kpi-val { font-size:24px; font-weight:800; color:var(--vmnp-primary); line-height:1.1; }
+			.vmnp-report-kpi-label { font-size:12px; color:var(--vmnp-muted); margin-top:6px; }
+			.vmnp-report-charts { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:16px; }
+			@media (max-width: 980px){ .vmnp-report-charts{ grid-template-columns:1fr; } }
+			.vmnp-report-card { background:var(--vmnp-surface); border:1px solid var(--vmnp-border); border-radius:16px; padding:16px; box-shadow:var(--vmnp-shadow); }
+			.vmnp-report-card-title { font-size:13px; font-weight:700; color:var(--vmnp-text); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+			.vmnp-report-count { font-size:11px; color:var(--vmnp-muted); font-weight:600; }
+			.vmnp-chart { min-height:280px; }
+			.vmnp-report-table-wrap { overflow-x:auto; }
+			.vmnp-report-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+			.vmnp-report-tbl th { text-align:left; padding:10px 12px; color:var(--vmnp-muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid var(--vmnp-border); white-space:nowrap; }
+			.vmnp-report-tbl td { padding:10px 12px; border-bottom:1px solid var(--vmnp-border); color:var(--vmnp-text); white-space:nowrap; }
+			.vmnp-report-tbl tbody tr:hover { background:var(--vmnp-surface-soft); }
+			.vmnp-report-empty { padding:26px; text-align:center; color:var(--vmnp-muted); font-size:13px; }
+		`).appendTo(document.head);
+	}
+
+	proto.load_portal = async function () {
+		const result = await previous_load_portal.call(this);
+		try {
+			const menu = this.bootstrap && this.bootstrap.menu;
+			if (menu && !menu.some((g) => /report/i.test(g.label || ""))) {
+				const items = REPORTS.map((r) => ({ key: r.key, label: __(r.label), icon: r.icon, is_report: true }));
+				menu.push({ label: __("Reports"), items });
+				items.forEach((it) => { this.menu_items[it.key] = it; });
+				this.render_navigation();
+			}
+		} catch (error) { /* menu inject fail -> baaki app chalta rahe */ }
+		return result;
+	};
+
+	proto.show_list = function (key, options = {}) {
+		if (REPORT_KEYS.has(key)) return this.show_report(key);
+		return previous_show_list.call(this, key, options);
+	};
+
+	proto.refresh_current_view = function () {
+		if (this.current_view && this.current_view.type === "report") {
+			return this.show_report(this.current_view.key);
+		}
+		return previous_refresh ? previous_refresh.call(this) : undefined;
+	};
+
+	proto.show_report = async function (key) {
+		const state = { type: "report", key };
+		this.current_view = state;
+		this.set_active_navigation(key);
+		const item = this.menu_items[key] || {};
+		this.set_route_title(item.label || __("Report"));
+
+		this.$view.html(`
+			<div class="vmnp-page vmnp-report">
+				<div class="vmnp-report-head">
+					<div class="vmnp-report-heading">
+						<div class="vmnp-report-title">${frappe.utils.escape_html(item.label || __("Report"))}</div>
+						<div class="vmnp-report-desc">${__("Filter by date range, view charts and export the data.")}</div>
+					</div>
+					<div class="vmnp-report-filters">
+						<div class="vmnp-report-field"><label>${__("From")}</label><input type="date" class="vmnp-input" data-rpt-from></div>
+						<div class="vmnp-report-field"><label>${__("To")}</label><input type="date" class="vmnp-input" data-rpt-to></div>
+						<button class="vmnp-primary-button" type="button" data-rpt-apply>${__("Apply")}</button>
+						<button class="vmnp-secondary-button" type="button" data-rpt-reset>${__("Reset")}</button>
+						<button class="vmnp-secondary-button" type="button" data-rpt-csv>${__("Export CSV")}</button>
+					</div>
+				</div>
+				<div data-rpt-body></div>
+			</div>
+		`);
+
+		const portal = this;
+		const $root = this.$view.find(".vmnp-report");
+		const load = async () => {
+			if (portal.current_view !== state) return;
+			const from = $root.find("[data-rpt-from]").val() || "";
+			const to = $root.find("[data-rpt-to]").val() || "";
+			$root.find("[data-rpt-body]").html(portal.loading_template(__("Loading report…")));
+			try {
+				const data = await portal.api("get_report", { key, from_date: from, to_date: to });
+				if (portal.current_view !== state) return;
+				portal.render_report_body($root, data);
+			} catch (error) {
+				portal.render_error(error, () => portal.show_report(key));
+			}
+		};
+		$root.on("click", "[data-rpt-apply]", load);
+		$root.on("click", "[data-rpt-reset]", () => { $root.find("[data-rpt-from],[data-rpt-to]").val(""); load(); });
+		$root.on("click", "[data-rpt-csv]", () => portal.export_report_csv());
+		await load();
+	};
+
+	proto.render_report_body = function ($root, data) {
+		this._report_data = data;
+		const inr = (n) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(Number(n) || 0);
+		const fmt = (v) => {
+			if (v == null || v === "") return "";
+			if (typeof v === "number") return inr(v);
+			const s = String(v);
+			const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+			return m ? `${m[3]}/${m[2]}/${m[1]}` : s;
+		};
+
+		const kpis = (data.kpis || []).map((k) => `
+			<div class="vmnp-report-kpi">
+				<div class="vmnp-report-kpi-val">${inr(k.value)}</div>
+				<div class="vmnp-report-kpi-label">${frappe.utils.escape_html(k.label)}</div>
+			</div>`).join("");
+
+		const cols = data.columns || [];
+		const body = (data.rows || []).map((r) =>
+			`<tr>${cols.map((c) => `<td>${frappe.utils.escape_html(fmt(r[c.fieldname]))}</td>`).join("")}</tr>`).join("");
+		const table = `
+			<div class="vmnp-report-table-wrap">
+				<table class="vmnp-report-tbl">
+					<thead><tr>${cols.map((c) => `<th>${frappe.utils.escape_html(c.label)}</th>`).join("")}</tr></thead>
+					<tbody>${body || `<tr><td colspan="${cols.length}" class="vmnp-report-empty">${__("No data for this range")}</td></tr>`}</tbody>
+				</table>
+			</div>`;
+
+		$root.find("[data-rpt-body]").html(`
+			<div class="vmnp-report-kpis">${kpis}</div>
+			<div class="vmnp-report-charts">
+				<div class="vmnp-report-card">
+					<div class="vmnp-report-card-title">${frappe.utils.escape_html(data.bar.title)}</div>
+					<div class="vmnp-chart" data-rpt-bar></div>
+				</div>
+				<div class="vmnp-report-card">
+					<div class="vmnp-report-card-title">${frappe.utils.escape_html(data.pie.title)}</div>
+					<div class="vmnp-chart" data-rpt-pie></div>
+				</div>
+			</div>
+			<div class="vmnp-report-card">
+				<div class="vmnp-report-card-title">${__("Records")}<span class="vmnp-report-count">${data.shown_rows} / ${data.total_rows}</span></div>
+				${table}
+			</div>
+		`);
+
+		this.render_report_charts($root, data);
+	};
+
+	proto.render_report_charts = function ($root, data) {
+		const barEl = $root.find("[data-rpt-bar]")[0];
+		const pieEl = $root.find("[data-rpt-pie]")[0];
+		const noChart = typeof frappe === "undefined" || typeof frappe.Chart !== "function";
+		if (noChart) {
+			if (barEl) barEl.innerHTML = `<div class="vmnp-report-empty">${__("Chart library unavailable")}</div>`;
+			if (pieEl) pieEl.innerHTML = "";
+			return;
+		}
+		try {
+			if (barEl) {
+				barEl.innerHTML = "";
+				if ((data.bar.labels || []).length) {
+					new frappe.Chart(barEl, {
+						data: { labels: data.bar.labels, datasets: [{ values: data.bar.values }] },
+						type: "bar", height: 280, colors: ["#5c4de6"], barOptions: { spaceRatio: 0.4 },
+					});
+				} else {
+					barEl.innerHTML = `<div class="vmnp-report-empty">${__("No data")}</div>`;
+				}
+			}
+			if (pieEl) {
+				pieEl.innerHTML = "";
+				if ((data.pie.labels || []).length) {
+					new frappe.Chart(pieEl, {
+						data: { labels: data.pie.labels, datasets: [{ values: data.pie.values }] },
+						type: "pie", height: 280, colors: PALETTE,
+					});
+				} else {
+					pieEl.innerHTML = `<div class="vmnp-report-empty">${__("No data")}</div>`;
+				}
+			}
+		} catch (error) {
+			if (barEl) barEl.innerHTML = `<div class="vmnp-report-empty">${__("Chart error")}</div>`;
+		}
+	};
+
+	proto.export_report_csv = function () {
+		const data = this._report_data;
+		if (!data) return;
+		const cols = data.columns || [];
+		const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+		const lines = [cols.map((c) => esc(c.label)).join(",")];
+		(data.rows || []).forEach((r) => lines.push(cols.map((c) => esc(r[c.fieldname])).join(",")));
+		const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${data.key}_${data.from_date || "all"}_${data.to_date || "all"}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+	};
+})();
