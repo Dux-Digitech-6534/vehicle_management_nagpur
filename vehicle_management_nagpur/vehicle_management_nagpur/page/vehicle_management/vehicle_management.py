@@ -1108,30 +1108,61 @@ def _vmn_assign_roles(user, selected):
     user_doc.save(ignore_permissions=True)
 
 
+def _vmn_set_new_user_password(user, password):
+    """Admin-set login password for a freshly created user. Password policy is
+    bypassed so the admin can set any password from the portal without an error."""
+    user_doc = frappe.get_doc("User", user)
+    user_doc.new_password = password
+    user_doc.flags.ignore_password_policy = True
+    user_doc.flags.ignore_permissions = True
+    user_doc.save(ignore_permissions=True)
+
+
 def _vmn_post_save_user(doc, values):
-    """After a User Details VMN record is saved from the portal: scope the user to
-    their campus, register them as a supervisor and apply the picked app roles."""
+    """After a User Details VMN record is saved from the portal: set the new
+    user's password, scope them to their campus, register them as a supervisor and
+    apply the picked app roles. Every step is isolated so a failure in one never
+    breaks the save or surfaces an error to the operator."""
     user = cstr(doc.get("ud_user_name")).strip()
     if not user:
         return
+
+    # New-user password (optional) — only when this record just created the user.
+    new_password = cstr(values.get("ud_new_user_password") or "").strip()
+    if new_password and cint(doc.get("ud_create_new_user")):
+        try:
+            _vmn_set_new_user_password(user, new_password)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "VMN: set new-user password failed")
+
     campus = cstr(doc.get("ud_campus")).strip()
     if campus:
-        _vmn_sync_user_permission(user, "Campus Details VMN", campus)
-        dg_campus = _vmn_matching_dg_campus(campus)
-        if dg_campus:
-            _vmn_sync_user_permission(user, "DG Campus VMN", dg_campus)
-    _vmn_sync_supervisor(user)
+        try:
+            _vmn_sync_user_permission(user, "Campus Details VMN", campus)
+            dg_campus = _vmn_matching_dg_campus(campus)
+            if dg_campus:
+                _vmn_sync_user_permission(user, "DG Campus VMN", dg_campus)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "VMN: campus user-permission failed")
+
+    try:
+        _vmn_sync_supervisor(user)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "VMN: supervisor sync failed")
 
     selected = values.get("ud_selected_roles")
     if selected is not None and _vmn_can_manage_roles():
-        if isinstance(selected, str):
-            selected = selected.strip()
-            if selected.startswith("["):
-                try:
-                    selected = frappe.parse_json(selected)
-                except Exception:
-                    selected = []
-            else:
-                selected = [s.strip() for s in selected.split(",") if s.strip()]
-        if isinstance(selected, list):
-            _vmn_assign_roles(user, selected)
+        try:
+            if isinstance(selected, str):
+                selected = selected.strip()
+                if selected.startswith("["):
+                    try:
+                        selected = frappe.parse_json(selected)
+                    except Exception:
+                        selected = []
+                else:
+                    selected = [s.strip() for s in selected.split(",") if s.strip()]
+            if isinstance(selected, list):
+                _vmn_assign_roles(user, selected)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "VMN: assign roles failed")

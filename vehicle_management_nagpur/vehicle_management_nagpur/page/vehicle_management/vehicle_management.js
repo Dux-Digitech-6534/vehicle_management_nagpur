@@ -12056,7 +12056,7 @@ proto.render_form = function (data) {
 				.join("");
 			$ut.html(`
 				<label class="vmnp-field-label">${__("User Type")}<b class="vmnp-required">*</b></label>
-				<select class="vmnp-plain-select vmnp-usertype-select" data-vmnp-no-search="1">${option_html}</select>
+				<select class="vmnp-select vmnp-usertype-select" aria-label="${__("User Type")}">${option_html}</select>
 			`);
 			const $sel = $ut.find(".vmnp-usertype-select");
 			if (current && !has_current) $sel.append(new Option(current, current));
@@ -12068,7 +12068,27 @@ proto.render_form = function (data) {
 			};
 		}
 
-		// 3) Create-new toggle initial state + campus (all) load.
+		// 2b) New user password (create-new toggle ke saath dikhta hai).
+		const $pwHost = this.$view.find('[data-control-field="ud_new_user_email"]');
+		if ($pwHost.length && !this.$view.find("[data-vmnp-newpass]").length) {
+			const $pwSlot = $(`
+				<div class="vmnp-control-slot" data-vmnp-newpass>
+					<label class="vmnp-field-label">${__("New User Password")}</label>
+					<input type="password" class="vmnp-input vmnp-newpass-input" autocomplete="new-password" placeholder="${__("Set a login password")}">
+					<small class="vmnp-field-help">${__("Blank chhodo to welcome email jaayega — user khud password set kar lega.")}</small>
+				</div>
+			`);
+			$pwHost.after($pwSlot);
+			const $pw = $pwSlot.find(".vmnp-newpass-input");
+			this.controls["ud_new_user_password"] = {
+				$input: $pw,
+				get_value: () => $pw.val() || "",
+				set_value: () => {},
+			};
+		}
+
+		// 3) User Type combo + create-new toggle + campus (all) load.
+		if (typeof this.enhance_selects === "function") { try { this.enhance_selects(); } catch (error) {} }
 		try { this.toggle_vehicle_user_creation_fields(); } catch (error) {}
 		if (typeof this.load_campus_options === "function") {
 			window.setTimeout(() => this.load_campus_options("ud_campus", (data && data.values && data.values.ud_campus) || ""), 0);
@@ -12279,6 +12299,22 @@ proto.render_form = function (data) {
 				} catch (error) {}
 			}, 0);
 		}
+		return result;
+	};
+})();
+
+/* VMNP: password field ko create-new toggle ke saath dikhao/chhupao. 2026-08-25 */
+(() => {
+	if (typeof VehicleManagementPortal === "undefined" || window.__vmnpNewPassToggle20260825) return;
+	window.__vmnpNewPassToggle20260825 = true;
+	const proto = VehicleManagementPortal.prototype;
+	const previous_toggle = proto.toggle_vehicle_user_creation_fields;
+	proto.toggle_vehicle_user_creation_fields = function () {
+		const result = previous_toggle ? previous_toggle.call(this) : undefined;
+		try {
+			const create_new = Number(this.control_value("ud_create_new_user") || 0) === 1;
+			this.$view.find("[data-vmnp-newpass]").toggle(create_new);
+		} catch (error) {}
 		return result;
 	};
 })();
