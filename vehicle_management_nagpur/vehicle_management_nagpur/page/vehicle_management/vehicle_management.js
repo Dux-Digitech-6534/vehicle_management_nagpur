@@ -11408,7 +11408,7 @@ proto.render_form = function (data) {
 			<div class="vmnp-date-popover" role="dialog" aria-label="${frappe.utils.escape_html(field.label)}" hidden>
 				<div class="vmnp-date-popover-head">
 					<button type="button" data-date-prev aria-label="${__("Previous month")}">${this.icon("arrow-left")}</button>
-					<strong data-date-month></strong>
+					<div class="vmnp-date-selects"><select class="vmnp-date-msel" data-date-month-sel aria-label="${__("Month")}"></select><select class="vmnp-date-ysel" data-date-year-sel aria-label="${__("Year")}"></select></div>
 					<button type="button" data-date-next aria-label="${__("Next month")}">${this.icon("arrow-right")}</button>
 				</div>
 				<div class="vmnp-date-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
@@ -11417,10 +11417,22 @@ proto.render_form = function (data) {
 			</div>
 		`).appendTo(this.$root);
 
+		const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 		const render = () => {
-			$popover.find("[data-date-month]").text(
-				new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(shown)
+			// Month + Year dropdowns — 10 saal pehle se 10 saal aage tak seedhe jump.
+			const cur_year = shown.getFullYear();
+			const cur_month = shown.getMonth();
+			const nav_this_year = new Date().getFullYear();
+			const min_year = Math.min(nav_this_year - 10, cur_year);
+			const max_year = Math.max(nav_this_year + 10, cur_year);
+			$popover.find("[data-date-month-sel]").html(
+				MONTHS.map((m, i) => `<option value="${i}" ${i === cur_month ? "selected" : ""}>${__(m)}</option>`).join("")
 			);
+			let year_opts = "";
+			for (let y = min_year; y <= max_year; y += 1) {
+				year_opts += `<option value="${y}" ${y === cur_year ? "selected" : ""}>${y}</option>`;
+			}
+			$popover.find("[data-date-year-sel]").html(year_opts);
 			const today = iso_from_date(new Date());
 			const selected = portal.parse_display_date($input.val()) || "";
 			const first_day = new Date(shown.getFullYear(), shown.getMonth(), 1).getDay();
@@ -11469,6 +11481,8 @@ proto.render_form = function (data) {
 		$popover.on("mousedown", (event) => event.stopPropagation());
 		$popover.on("click", "[data-date-prev]", () => { shown = new Date(shown.getFullYear(), shown.getMonth() - 1, 1); render(); });
 		$popover.on("click", "[data-date-next]", () => { shown = new Date(shown.getFullYear(), shown.getMonth() + 1, 1); render(); });
+		$popover.on("change", "[data-date-month-sel]", (event) => { shown = new Date(shown.getFullYear(), Number(event.currentTarget.value), 1); render(); });
+		$popover.on("change", "[data-date-year-sel]", (event) => { shown = new Date(Number(event.currentTarget.value), shown.getMonth(), 1); render(); });
 		$popover.on("click", "[data-date-value]", (event) => {
 			$input.val(portal.format_date($(event.currentTarget).attr("data-date-value"), "")).trigger("change");
 			close();
@@ -12423,6 +12437,8 @@ proto.render_form = function (data) {
 
 		const portal = this;
 		const $root = this.$view.find(".vmnp-report");
+		const _ty = new Date().getFullYear();
+		$root.find("[data-rpt-from],[data-rpt-to]").attr({ min: (_ty - 10) + "-01-01", max: (_ty + 10) + "-12-31" });
 		const load = async () => {
 			if (portal.current_view !== state) return;
 			const from = $root.find("[data-rpt-from]").val() || "";
@@ -12545,4 +12561,21 @@ proto.render_form = function (data) {
 		document.body.removeChild(a);
 		window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 	};
+})();
+
+/* VMNP: date-picker header me Month + Year dropdown ka style. 2026-08-26 */
+(() => {
+	if (document.getElementById("vmnp-datesel-style")) return;
+	const s = document.createElement("style");
+	s.id = "vmnp-datesel-style";
+	s.textContent = `
+		.vmnp-date-popover-head .vmnp-date-selects { display:flex; gap:6px; align-items:center; flex:1; justify-content:center; }
+		.vmnp-date-popover .vmnp-date-msel, .vmnp-date-popover .vmnp-date-ysel {
+			height:30px; padding:0 6px; font-size:12px; font-weight:600;
+			color:var(--vmnp-text); background:var(--vmnp-surface-soft);
+			border:1px solid var(--vmnp-border); border-radius:8px; cursor:pointer; outline:none;
+		}
+		.vmnp-date-popover .vmnp-date-msel:focus, .vmnp-date-popover .vmnp-date-ysel:focus { border-color:var(--vmnp-primary); }
+	`;
+	document.head.appendChild(s);
 })();
